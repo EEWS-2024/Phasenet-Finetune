@@ -187,10 +187,15 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
                 avg_train_loss = np.mean(train_losses)
                 print(f"  Average Training Loss: {avg_train_loss:.6f}")
             
-            # Validation phase
-            if data_reader_valid and valid_batch is not None:
+            # Validation phase - recreate dataset for each epoch
+            if data_reader_valid:
+                print(f"  Running validation...")
                 valid_losses = []
                 valid_step = 0
+                
+                # Create fresh validation dataset for this epoch
+                valid_dataset_epoch = data_reader_valid.dataset(args.batch_size, shuffle=False, drop_remainder=False)
+                valid_batch_epoch = tf.compat.v1.data.make_one_shot_iterator(valid_dataset_epoch).get_next()
                 
                 try:
                     while True:
@@ -200,13 +205,18 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
                         }
                         
                         # Get validation batch data and run validation
-                        valid_data = sess.run(valid_batch)
+                        sample_batch, target_batch, fname_batch = sess.run(valid_batch_epoch)
+                        
+                        # Create feed dict with validation data
+                        feed_dict[model.X] = sample_batch
+                        feed_dict[model.Y] = target_batch
+                        
                         loss_val = sess.run(model.loss, feed_dict=feed_dict)
                         valid_losses.append(loss_val)
                         valid_step += 1
                         
-                        # Limit validation steps to avoid infinite loop
-                        if valid_step >= 50:  # Process max 50 validation batches
+                        # Process at most 20 validation batches per epoch
+                        if valid_step >= 20:
                             break
                         
                 except tf.errors.OutOfRangeError:
@@ -217,6 +227,8 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
                     print(f"  Average Validation Loss: {avg_valid_loss:.6f} ({len(valid_losses)} batches)")
                 else:
                     print(f"  Average Validation Loss: No validation data processed")
+            else:
+                print(f"  No validation data provided")
             
             # Save checkpoint
             if (epoch + 1) % args.save_interval == 0 or epoch == args.epochs - 1:
@@ -242,10 +254,10 @@ def main():
     parser.add_argument('--format', type=str, default='numpy', help='Data format')
     
     # Model parameters
-    parser.add_argument('--model_dir', type=str, default='model_indonesia_99pct', help='Model directory')
+    parser.add_argument('--model_dir', type=str, default='model_indonesia', help='Model directory')
     parser.add_argument('--load_model', action='store_true', help='Load existing model')
     parser.add_argument('--load_model_dir', type=str, help='Directory to load model from')
-    parser.add_argument('--log_dir', type=str, default='logs_indonesia_99pct', help='Log directory')
+    parser.add_argument('--log_dir', type=str, default='logs_indonesia', help='Log directory')
     
     # Training parameters optimized for 99% coverage
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')

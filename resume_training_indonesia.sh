@@ -88,11 +88,13 @@ if [ $? -eq 0 ]; then
     LATEST_MODEL=$(ls -t ../$OUTPUT_MODEL_DIR/ | head -n 1)
     
     if [ -n "$LATEST_MODEL" ]; then
+        echo "Testing with latest model: $LATEST_MODEL"
+        
         python test_indonesia.py \
             --test_dir="../$DATASET_DIR/npz_padded" \
             --test_list="../$DATASET_DIR/valid_list_99pct.csv" \
-            --model_dir="../$OUTPUT_MODEL_DIR" \
-            --output_dir="../$OUTPUT_MODEL_DIR/test_results_indonesia" \
+            --model_dir="../$OUTPUT_MODEL_DIR/$LATEST_MODEL" \
+            --output_dir="../test_results_indonesia" \
             --batch_size=2 \
             --plot_results
         

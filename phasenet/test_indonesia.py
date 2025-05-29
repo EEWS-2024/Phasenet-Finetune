@@ -202,7 +202,7 @@ def test_fn(args, data_reader):
     
     # Save results
     results_df = pd.DataFrame(results)
-    output_file = os.path.join(args.output_dir, 'test_results_indonesia_99pct.csv')
+    output_file = os.path.join(args.output_dir, 'test_results_indonesia.csv')
     results_df.to_csv(output_file, index=False)
     print(f"Results saved to: {output_file}")
     
@@ -312,7 +312,7 @@ def create_performance_plots(results_df, output_dir):
     axes[1, 2].legend()
     
     plt.tight_layout()
-    plot_file = os.path.join(output_dir, 'performance_analysis_indonesia_99pct.png')
+    plot_file = os.path.join(output_dir, 'performance_analysis_indonesia.png')
     plt.savefig(plot_file, dpi=300, bbox_inches='tight')
     plt.close()
     
@@ -331,7 +331,7 @@ def main():
     parser.add_argument('--model_path', type=str, help='Specific model path (optional)')
     
     # Output parameters
-    parser.add_argument('--output_dir', type=str, default='test_results_indonesia_99pct', help='Output directory')
+    parser.add_argument('--output_dir', type=str, default='test_results_indonesia', help='Output directory')
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size for testing')
     parser.add_argument('--plot_results', action='store_true', help='Create performance plots')
     
