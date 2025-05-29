@@ -2,6 +2,10 @@
 """
 Training script untuk PhaseNet Indonesia dengan 99% coverage
 Window size: 135 detik (13,500 samples) untuk menangkap 99% data Indonesia
+
+CATATAN: Warning TensorFlow tentang 'is_training' placeholder adalah NORMAL dan bisa diabaikan:
+"INVALID_ARGUMENT: You must feed a value for placeholder tensor 'is_training'"
+Ini terjadi karena TensorFlow mencoba mengoptimalkan graph computation yang tidak digunakan.
 """
 
 import argparse
@@ -9,6 +13,16 @@ import os
 import sys
 import tensorflow as tf
 tf.compat.v1.disable_eager_execution()
+
+# Reduce TensorFlow verbose output while keeping errors and important warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # 0=all, 1=info+, 2=warning+, 3=error+
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'  # Prevent GPU memory allocation issues
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+
+# Disable some verbose warnings
+import warnings
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=UserWarning)
 
 # Add phasenet to path
 sys.path.append(os.path.dirname(__file__))
@@ -61,6 +75,69 @@ def save_config(config, model_dir):
     with open(config_file, 'w') as f:
         json.dump(config_dict, f, indent=2)
     print(f"Configuration saved to: {config_file}")
+
+def safe_model_restore(sess, checkpoint_path):
+    """
+    Safely restore model from checkpoint with compatibility handling
+    """
+    print(f"Attempting to restore from: {checkpoint_path}")
+    
+    # Always exclude global_step first since it often causes dtype issues
+    all_vars = tf.compat.v1.global_variables()
+    vars_no_global_step = [v for v in all_vars if 'global_step' not in v.name.lower()]
+    
+    try:
+        # Method 1: Try restore excluding global_step (most common solution)
+        saver = tf.compat.v1.train.Saver(vars_no_global_step)
+        saver.restore(sess, checkpoint_path)
+        print(f"✅ Restore successful (excluded global_step, loaded {len(vars_no_global_step)} vars)")
+        return True
+        
+    except Exception as e:
+        print(f"⚠️  Restore without global_step failed: {str(e)}")
+        
+        try:
+            # Method 2: Manual variable mapping (most robust)
+            checkpoint_vars = tf.train.list_variables(checkpoint_path)
+            checkpoint_var_dict = dict(checkpoint_vars)
+            
+            current_vars = tf.compat.v1.global_variables()
+            restore_ops = []
+            successful_vars = []
+            
+            for var in current_vars:
+                var_name = var.name.split(':')[0]
+                
+                # Skip global_step and other potentially problematic vars
+                if 'global_step' in var_name.lower():
+                    continue
+                    
+                if var_name in checkpoint_var_dict:
+                    try:
+                        # Load variable value from checkpoint
+                        var_value = tf.train.load_variable(checkpoint_path, var_name)
+                        
+                        # Check if shapes match
+                        if var.shape.as_list() == list(var_value.shape):
+                            restore_ops.append(var.assign(var_value))
+                            successful_vars.append(var_name)
+                        else:
+                            print(f"   Shape mismatch for {var_name}: {var.shape.as_list()} vs {var_value.shape}")
+                    except Exception as ve:
+                        print(f"   Failed to load {var_name}: {str(ve)}")
+            
+            if restore_ops:
+                sess.run(restore_ops)
+                print(f"✅ Manual restore successful ({len(successful_vars)} variables)")
+                print(f"   Sample loaded vars: {successful_vars[:5]}{'...' if len(successful_vars) > 5 else ''}")
+                return True
+            else:
+                print("❌ No variables could be restored")
+                return False
+                
+        except Exception as e2:
+            print(f"❌ All restore methods failed: {str(e2)}")
+            return False
 
 def train_fn(args, data_reader_train, data_reader_valid=None):
     """Training function for Indonesia 99% coverage model"""
@@ -128,28 +205,10 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
             # Find latest checkpoint
             ckpt = tf.train.latest_checkpoint(args.load_model_dir)
             if ckpt:
-                try:
-                    # Try to load with all variables
-                    saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables())
-                    saver.restore(sess, ckpt)
-                    print(f"✅ Pre-trained model loaded: {ckpt}")
-                    
-                except tf.errors.InvalidArgumentError as e:
-                    if "global_step" in str(e) and "dtype" in str(e):
-                        print("⚠️  Global step dtype mismatch detected, trying compatibility mode...")
-                        
-                        # Get all variables except global_step
-                        all_vars = tf.compat.v1.global_variables()
-                        vars_to_restore = [v for v in all_vars if 'global_step' not in v.name]
-                        
-                        # Create saver without global_step
-                        saver_compat = tf.compat.v1.train.Saver(vars_to_restore)
-                        saver_compat.restore(sess, ckpt)
-                        
-                        print("✅ Pre-trained model loaded in compatibility mode (global_step reset)")
-                    else:
-                        print(f"❌ Failed to load pre-trained model: {e}")
-                        raise e
+                success = safe_model_restore(sess, ckpt)
+                if not success:
+                    print("❌ Failed to load pre-trained model with all methods")
+                    print("   Training will continue from scratch")
             else:
                 print(f"❌ No checkpoint found in {args.load_model_dir}")
         

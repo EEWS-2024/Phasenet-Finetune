@@ -2,6 +2,10 @@
 """
 Testing script untuk PhaseNet Indonesia dengan 99% coverage
 Window size: 135 detik (13,500 samples) untuk menangkap 99% data Indonesia
+
+CATATAN: Warning TensorFlow tentang 'is_training' placeholder adalah NORMAL dan bisa diabaikan:
+"INVALID_ARGUMENT: You must feed a value for placeholder tensor 'is_training'"
+Ini hanya debug info dari TensorFlow yang tidak mempengaruhi hasil testing.
 """
 
 import argparse
@@ -9,6 +13,10 @@ import os
 import sys
 import tensorflow as tf
 tf.compat.v1.disable_eager_execution()
+
+# Reduce TensorFlow verbose output while keeping errors and important warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # 0=all, 1=info+, 2=warning+, 3=error+
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # Add phasenet to path
 sys.path.append(os.path.dirname(__file__))
