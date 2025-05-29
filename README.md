@@ -106,7 +106,7 @@ Berdasarkan analisis 2,053 file NPZ dataset Indonesia:
 
 ```bash
 # Training dari awal dengan window 135 detik
-bash run_training_indonesia_99pct.sh
+bash run_training_indonesia.sh
 ```
 
 **Karakteristik:**
@@ -117,7 +117,7 @@ bash run_training_indonesia_99pct.sh
 
 ```bash
 # Fine-tuning dari model PhaseNet yang sudah bagus (190703-214543)
-bash resume_training_indonesia_99pct.sh
+bash resume_training_indonesia.sh
 ```
 
 **Karakteristik:**
@@ -125,18 +125,18 @@ bash resume_training_indonesia_99pct.sh
 
 ## 🔄 **PERBEDAAN SCRIPT TRAINING**
 
-### **`run_training_indonesia_99pct.sh` - Training Baru**
+### **`run_training_indonesia.sh` - Training Baru**
 - **Fungsi**: Memulai training dari awal (fresh start)
 - **Starting Point**: Random weights initialization
-- **Model Output**: `model_indonesia_99pct/YYMMDD-HHMMSS/`
+- **Model Output**: `model_indonesia/YYMMDD-HHMMSS/`
 - **Use Case**: 
   - Training pertama kali
   - Eksperimen dengan parameter baru
 
-### **`resume_training_indonesia_99pct.sh` - Fine-tuning**
+### **`resume_training_indonesia.sh` - Fine-tuning**
 - **Fungsi**: Fine-tuning dari model pre-trained yang sudah bagus
 - **Starting Point**: Model `190703-214543` (pre-trained PhaseNet)
-- **Model Output**: `model_indonesia_99pct/YYMMDD-HHMMSS/`
+- **Model Output**: `model_indonesia/YYMMDD-HHMMSS/`
 - Transfer learning yang efisien
 
 
@@ -149,7 +149,7 @@ bash resume_training_indonesia_99pct.sh
 ## ⚙️ **KONFIGURASI TEKNIS**
 
 ### **Parameter Training:**
-- Parameter training dapat diubah di file `run_training_indonesia_99pct.sh` dan `resume_training_indonesia_99pct.sh`
+- Parameter training dapat diubah di file `run_training_indonesia.sh` dan `resume_training_indonesia.sh`
 
 
 ---
