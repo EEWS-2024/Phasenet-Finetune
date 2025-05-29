@@ -11,12 +11,15 @@ Ini terjadi karena TensorFlow mencoba mengoptimalkan graph computation yang tida
 import argparse
 import os
 import sys
-import tensorflow as tf
-tf.compat.v1.disable_eager_execution()
 
-# Reduce TensorFlow verbose output while keeping errors and important warnings
+# Set environment variables BEFORE importing TensorFlow to prevent XLA issues
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # 0=all, 1=info+, 2=warning+, 3=error+
 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'  # Prevent GPU memory allocation issues
+os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices=false'  # Disable XLA to avoid libdevice issues
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # Use only first GPU
+
+import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # Disable some verbose warnings
@@ -24,12 +27,13 @@ import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 
+import numpy as np
+
 # Add phasenet to path
 sys.path.append(os.path.dirname(__file__))
 
 from model import ModelConfig, UNet
 from data_reader_indonesia import DataConfig_Indonesia, DataReader_Indonesia_Train
-import numpy as np
 import pandas as pd
 import json
 import datetime
@@ -48,7 +52,7 @@ class Config:
         self.use_dropout = True
         self.drop_rate = 0.15
         self.optimizer = 'adam'
-        self.learning_rate = 0.00003
+        self.learning_rate = 0.000015
         self.decay_step = 8
         self.decay_rate = 0.92
         self.batch_size = 16
@@ -78,66 +82,162 @@ def save_config(config, model_dir):
 
 def safe_model_restore(sess, checkpoint_path):
     """
-    Safely restore model from checkpoint with compatibility handling
+    Smart transfer learning: load only compatible weights from 30s model to 135s model
+    This is specifically designed for 190703-214543 (30s) -> Indonesia 135s transfer
     """
-    print(f"Attempting to restore from: {checkpoint_path}")
-    
-    # Always exclude global_step first since it often causes dtype issues
-    all_vars = tf.compat.v1.global_variables()
-    vars_no_global_step = [v for v in all_vars if 'global_step' not in v.name.lower()]
+    print(f"🧠 Smart Transfer Learning from: {checkpoint_path}")
+    print("   Strategy: Load compatible conv layers, reinit incompatible layers")
     
     try:
-        # Method 1: Try restore excluding global_step (most common solution)
-        saver = tf.compat.v1.train.Saver(vars_no_global_step)
-        saver.restore(sess, checkpoint_path)
-        print(f"✅ Restore successful (excluded global_step, loaded {len(vars_no_global_step)} vars)")
-        return True
+        # Get checkpoint variables
+        checkpoint_vars = tf.train.list_variables(checkpoint_path)
+        checkpoint_var_dict = dict(checkpoint_vars)
+        print(f"   Found {len(checkpoint_vars)} variables in checkpoint")
         
-    except Exception as e:
-        print(f"⚠️  Restore without global_step failed: {str(e)}")
+        # Get current model variables
+        current_vars = tf.compat.v1.global_variables()
         
-        try:
-            # Method 2: Manual variable mapping (most robust)
-            checkpoint_vars = tf.train.list_variables(checkpoint_path)
-            checkpoint_var_dict = dict(checkpoint_vars)
+        # Categories for smart loading
+        loaded_vars = []
+        skipped_vars = []
+        reinit_vars = []
+        
+        for var in current_vars:
+            var_name = var.name.split(':')[0]
             
-            current_vars = tf.compat.v1.global_variables()
-            restore_ops = []
-            successful_vars = []
+            # ALWAYS skip these problematic variables
+            skip_patterns = [
+                'global_step', 'Adam', 'adam', 'Momentum', 'momentum',
+                'moving_mean', 'moving_variance', 'beta', 'gamma'
+            ]
             
-            for var in current_vars:
-                var_name = var.name.split(':')[0]
+            if any(pattern in var_name for pattern in skip_patterns):
+                skipped_vars.append(var_name)
+                continue
+            
+            # Check if variable exists in checkpoint
+            if var_name not in checkpoint_var_dict:
+                reinit_vars.append(f"{var_name} (not_in_checkpoint)")
+                continue
+            
+            try:
+                # Load checkpoint value
+                checkpoint_value = tf.train.load_variable(checkpoint_path, var_name)
+                current_shape = var.shape.as_list()
+                checkpoint_shape = list(checkpoint_value.shape)
                 
-                # Skip global_step and other potentially problematic vars
-                if 'global_step' in var_name.lower():
-                    continue
+                # STRATEGY 1: Perfect match - load directly
+                if current_shape == checkpoint_shape:
+                    # Scale down weights for stability in transfer learning
+                    scaled_value = checkpoint_value * 0.1  # 10x smaller for stability
+                    sess.run(var.assign(scaled_value))
+                    loaded_vars.append(f"{var_name} {current_shape} (scaled_0.1x)")
                     
-                if var_name in checkpoint_var_dict:
-                    try:
-                        # Load variable value from checkpoint
-                        var_value = tf.train.load_variable(checkpoint_path, var_name)
-                        
-                        # Check if shapes match
-                        if var.shape.as_list() == list(var_value.shape):
-                            restore_ops.append(var.assign(var_value))
-                            successful_vars.append(var_name)
+                # STRATEGY 2: Conv layers - load if channels match
+                elif len(current_shape) == 4 and len(checkpoint_shape) == 4:
+                    # Conv weight: [height, width, in_channels, out_channels]
+                    if (current_shape[2] == checkpoint_shape[2] and 
+                        current_shape[3] == checkpoint_shape[3]):
+                        # Same in/out channels - can initialize with small kernel
+                        if current_shape[0] <= checkpoint_shape[0] and current_shape[1] <= checkpoint_shape[1]:
+                            # Current kernel smaller or equal - crop checkpoint kernel
+                            h_start = (checkpoint_shape[0] - current_shape[0]) // 2
+                            w_start = (checkpoint_shape[1] - current_shape[1]) // 2
+                            cropped_value = checkpoint_value[
+                                h_start:h_start+current_shape[0], 
+                                w_start:w_start+current_shape[1], 
+                                :, :
+                            ]
+                            # Scale down for stability
+                            scaled_cropped = cropped_value * 0.1
+                            sess.run(var.assign(scaled_cropped))
+                            loaded_vars.append(f"{var_name} {current_shape} (cropped_scaled)")
                         else:
-                            print(f"   Shape mismatch for {var_name}: {var.shape.as_list()} vs {var_value.shape}")
-                    except Exception as ve:
-                        print(f"   Failed to load {var_name}: {str(ve)}")
-            
-            if restore_ops:
-                sess.run(restore_ops)
-                print(f"✅ Manual restore successful ({len(successful_vars)} variables)")
-                print(f"   Sample loaded vars: {successful_vars[:5]}{'...' if len(successful_vars) > 5 else ''}")
-                return True
-            else:
-                print("❌ No variables could be restored")
-                return False
+                            # Current kernel larger - pad with small random values
+                            pad_h = (current_shape[0] - checkpoint_shape[0]) // 2
+                            pad_w = (current_shape[1] - checkpoint_shape[1]) // 2
+                            padded_value = np.pad(
+                                checkpoint_value, 
+                                ((pad_h, current_shape[0]-checkpoint_shape[0]-pad_h),
+                                 (pad_w, current_shape[1]-checkpoint_shape[1]-pad_w),
+                                 (0, 0), (0, 0)),
+                                mode='constant', constant_values=0
+                            )
+                            # Add small noise to padded regions and scale down
+                            mask = np.ones_like(padded_value)
+                            mask[pad_h:pad_h+checkpoint_shape[0], pad_w:pad_w+checkpoint_shape[1], :, :] = 0
+                            noise = np.random.normal(0, 0.001, padded_value.shape) * mask
+                            final_value = (padded_value + noise) * 0.1  # Scale down for stability
+                            sess.run(var.assign(final_value))
+                            loaded_vars.append(f"{var_name} {current_shape} (padded_scaled)")
+                    else:
+                        # Different channels - reinitialize with smart scaling
+                        if 'conv' in var_name.lower():
+                            # Initialize conv layers with smaller std for stability
+                            fan_in = current_shape[0] * current_shape[1] * current_shape[2]
+                            std = np.sqrt(2.0 / fan_in)  # He initialization
+                            init_value = np.random.normal(0, std * 0.01, current_shape)  # 100x smaller for extreme stability
+                            sess.run(var.assign(init_value))
+                            reinit_vars.append(f"{var_name} {current_shape} (ultra_small_conv_init)")
+                        else:
+                            reinit_vars.append(f"{var_name} {current_shape} (channel_mismatch)")
+                            
+                # STRATEGY 3: Dense/FC layers - very conservative
+                elif len(current_shape) == 2 and len(checkpoint_shape) == 2:
+                    # Dense layer: [input_size, output_size]
+                    if current_shape[1] == checkpoint_shape[1]:  # Same output size
+                        if current_shape[0] <= checkpoint_shape[0]:
+                            # Take subset of input weights and scale down
+                            subset_value = checkpoint_value[:current_shape[0], :] * 0.05  # 20x smaller for FC layers
+                            sess.run(var.assign(subset_value))
+                            loaded_vars.append(f"{var_name} {current_shape} (subset_scaled)")
+                        else:
+                            # Pad input weights - but this is risky for very different sizes
+                            reinit_vars.append(f"{var_name} {current_shape} (input_size_too_large)")
+                    else:
+                        # Different output size - must reinitialize
+                        reinit_vars.append(f"{var_name} {current_shape} (output_mismatch)")
+                        
+                # STRATEGY 4: Bias vectors
+                elif len(current_shape) == 1 and len(checkpoint_shape) == 1:
+                    if current_shape[0] == checkpoint_shape[0]:
+                        # Scale down bias terms significantly for stability
+                        scaled_bias = checkpoint_value * 0.01  # 100x smaller for bias
+                        sess.run(var.assign(scaled_bias))
+                        loaded_vars.append(f"{var_name} {current_shape} (bias_scaled)")
+                    else:
+                        reinit_vars.append(f"{var_name} {current_shape} (bias_size_mismatch)")
+                        
+                else:
+                    # Unsupported shape combination
+                    reinit_vars.append(f"{var_name} {current_shape} vs {checkpoint_shape} (unsupported)")
+                    
+            except Exception as e:
+                reinit_vars.append(f"{var_name} (load_error: {str(e)[:50]})")
                 
-        except Exception as e2:
-            print(f"❌ All restore methods failed: {str(e2)}")
+        # Report results
+        print(f"📊 Smart Transfer Learning Results:")
+        print(f"   ✅ Loaded: {len(loaded_vars)} variables")
+        print(f"   ⏭️  Skipped: {len(skipped_vars)} variables (optimizer/batch_norm)")
+        print(f"   🎲 Reinit: {len(reinit_vars)} variables (incompatible)")
+        
+        if len(loaded_vars) > 0:
+            print(f"   💾 Sample loaded: {loaded_vars[:3]}")
+        if len(reinit_vars) > 0:
+            print(f"   🎲 Sample reinit: {reinit_vars[:3]}")
+            
+        # Success if we loaded at least some conv layers
+        conv_loaded = sum(1 for v in loaded_vars if 'conv' in v.lower())
+        if conv_loaded > 0:
+            print(f"   🎯 Transfer learning SUCCESS: {conv_loaded} conv layers loaded")
+            return True
+        else:
+            print(f"   ⚠️  WARNING: No conv layers loaded, this is essentially random init")
             return False
+            
+    except Exception as e:
+        print(f"❌ Smart transfer learning failed: {str(e)}")
+        return False
 
 def train_fn(args, data_reader_train, data_reader_valid=None):
     """Training function for Indonesia 99% coverage model"""
@@ -175,18 +275,32 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
     # Save configuration
     save_config(config, model_dir)
     
-    # Create datasets
+    # Create datasets with proper re-initialization
     train_dataset = data_reader_train.dataset(args.batch_size, shuffle=True, drop_remainder=True)
-    train_batch = tf.compat.v1.data.make_one_shot_iterator(train_dataset).get_next()
     
-    if data_reader_valid:
-        valid_dataset = data_reader_valid.dataset(args.batch_size, shuffle=False, drop_remainder=False)
-        valid_batch = tf.compat.v1.data.make_one_shot_iterator(valid_dataset).get_next()
-    else:
-        valid_batch = None
+    # Use placeholder and feed_dict approach for more stable training
+    X_placeholder = tf.compat.v1.placeholder(tf.float32, [None] + data_reader_train.config.X_shape, name='X_input')
+    Y_placeholder = tf.compat.v1.placeholder(tf.float32, [None] + data_reader_train.config.Y_shape, name='Y_target')
+    fname_placeholder = tf.compat.v1.placeholder(tf.string, [None], name='fname_input')
     
-    # Create model
-    model = UNet(config=config, input_batch=train_batch, mode='train')
+    # Create model with placeholders
+    model = UNet(config=config, input_batch=(X_placeholder, Y_placeholder, fname_placeholder), mode='train')
+    
+    # Add gradient clipping to prevent gradient explosion and NaN losses
+    optimizer = tf.compat.v1.train.AdamOptimizer(config.learning_rate)
+    gradients = tf.gradients(model.loss, tf.compat.v1.trainable_variables())
+    
+    # Clip gradients to prevent explosion (very important for GPU training)
+    clipped_gradients, _ = tf.clip_by_global_norm(gradients, clip_norm=1.0)
+    
+    # Create training operation with clipped gradients
+    train_op = optimizer.apply_gradients(zip(clipped_gradients, tf.compat.v1.trainable_variables()))
+    
+    # Override the model's train_op with our gradient-clipped version
+    model.train_op = train_op
+    
+    # Add numerical stability checks
+    loss_check = tf.debugging.check_numerics(model.loss, "Loss contains NaN or Inf")
     
     # Session config
     sess_config = tf.compat.v1.ConfigProto()
@@ -209,6 +323,38 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
                 if not success:
                     print("❌ Failed to load pre-trained model with all methods")
                     print("   Training will continue from scratch")
+                else:
+                    print("✅ Transfer learning weights loaded successfully")
+                    
+                    # Test with a small forward pass to check for NaN issues
+                    print("🔍 Testing transfer learning stability...")
+                    try:
+                        # Create a small test batch
+                        test_X = tf.random.normal([1] + data_reader_train.config.X_shape)
+                        test_Y = tf.random.normal([1] + data_reader_train.config.Y_shape)
+                        test_fname = tf.constant(["test"])
+                        
+                        test_feed_dict = {
+                            X_placeholder: test_X.eval(),
+                            Y_placeholder: test_Y.eval(),
+                            fname_placeholder: test_fname.eval(),
+                            model.is_training: False,
+                            model.drop_rate: 0.0
+                        }
+                        
+                        test_loss = sess.run(model.loss, feed_dict=test_feed_dict)
+                        
+                        if np.isnan(test_loss) or np.isinf(test_loss):
+                            print(f"⚠️  Transfer learning produces NaN/Inf: {test_loss}")
+                            print("   Reinitializing all variables to prevent training issues")
+                            sess.run(tf.compat.v1.global_variables_initializer())
+                        else:
+                            print(f"✅ Transfer learning test passed: loss = {test_loss:.6f}")
+                            
+                    except Exception as e:
+                        print(f"⚠️  Transfer learning test failed: {str(e)}")
+                        print("   Reinitializing all variables to prevent training issues")
+                        sess.run(tf.compat.v1.global_variables_initializer())
             else:
                 print(f"❌ No checkpoint found in {args.load_model_dir}")
         
@@ -224,29 +370,58 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
         for epoch in range(args.epochs):
             print(f"\n=== Epoch {epoch + 1}/{args.epochs} ===")
             
+            # Create fresh iterator for each epoch
+            train_iterator = tf.compat.v1.data.make_one_shot_iterator(train_dataset)
+            train_batch = train_iterator.get_next()
+            
             # Training phase
             train_losses = []
             step = 0
             
             try:
                 while True:
+                    # Get batch data
+                    sample_batch, target_batch, fname_batch = sess.run(train_batch)
+                    
+                    # Create feed dict
                     feed_dict = {
+                        X_placeholder: sample_batch,
+                        Y_placeholder: target_batch,
+                        fname_placeholder: fname_batch,
                         model.is_training: True,
                         model.drop_rate: args.drop_rate
                     }
                     
-                    _, loss_val = sess.run([model.train_op, model.loss], feed_dict=feed_dict)
-                    train_losses.append(loss_val)
-                    
-                    step += 1
-                    if step % 10 == 0:
-                        print(f"  Step {step}, Loss: {loss_val:.6f}")
+                    # Run training step with numerical checks
+                    try:
+                        _, loss_val, _ = sess.run([model.train_op, model.loss, loss_check], feed_dict=feed_dict)
+                        
+                        # Check for NaN/Inf
+                        if np.isnan(loss_val) or np.isinf(loss_val):
+                            print(f"⚠️  WARNING: Invalid loss detected: {loss_val}")
+                            print(f"   Step: {step}, Epoch: {epoch + 1}")
+                            # Skip this batch but continue training
+                            continue
+                            
+                        train_losses.append(loss_val)
+                        step += 1
+                        
+                        if step % 10 == 0:
+                            print(f"  Step {step}, Loss: {loss_val:.6f}")
+                            
+                    except tf.errors.InvalidArgumentError as e:
+                        print(f"⚠️  Numerical error detected at step {step}: {str(e)}")
+                        print(f"   Skipping this batch and continuing...")
+                        continue
                         
             except tf.errors.OutOfRangeError:
-                avg_train_loss = np.mean(train_losses)
-                print(f"  Average Training Loss: {avg_train_loss:.6f}")
+                if len(train_losses) > 0:
+                    avg_train_loss = np.mean(train_losses)
+                    print(f"  Average Training Loss: {avg_train_loss:.6f}")
+                else:
+                    print(f"  Average Training Loss: No valid batches processed")
             
-            # Validation phase - recreate dataset for each epoch
+            # Validation phase with fresh data
             if data_reader_valid:
                 print(f"  Running validation...")
                 valid_losses = []
@@ -254,24 +429,29 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
                 
                 # Create fresh validation dataset for this epoch
                 valid_dataset_epoch = data_reader_valid.dataset(args.batch_size, shuffle=False, drop_remainder=False)
-                valid_batch_epoch = tf.compat.v1.data.make_one_shot_iterator(valid_dataset_epoch).get_next()
+                valid_iterator = tf.compat.v1.data.make_one_shot_iterator(valid_dataset_epoch)
+                valid_batch_epoch = valid_iterator.get_next()
                 
                 try:
                     while True:
+                        # Get validation batch data
+                        sample_batch, target_batch, fname_batch = sess.run(valid_batch_epoch)
+                        
+                        # Create feed dict for validation
                         feed_dict = {
+                            X_placeholder: sample_batch,
+                            Y_placeholder: target_batch,
+                            fname_placeholder: fname_batch,
                             model.is_training: False,
                             model.drop_rate: 0.0
                         }
                         
-                        # Get validation batch data and run validation
-                        sample_batch, target_batch, fname_batch = sess.run(valid_batch_epoch)
-                        
-                        # Create feed dict with validation data
-                        feed_dict[model.X] = sample_batch
-                        feed_dict[model.Y] = target_batch
-                        
                         loss_val = sess.run(model.loss, feed_dict=feed_dict)
-                        valid_losses.append(loss_val)
+                        
+                        # Check for valid loss
+                        if not (np.isnan(loss_val) or np.isinf(loss_val)):
+                            valid_losses.append(loss_val)
+                        
                         valid_step += 1
                         
                         # Process at most 20 validation batches per epoch
@@ -285,7 +465,7 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
                     avg_valid_loss = np.mean(valid_losses)
                     print(f"  Average Validation Loss: {avg_valid_loss:.6f} ({len(valid_losses)} batches)")
                 else:
-                    print(f"  Average Validation Loss: No validation data processed")
+                    print(f"  Average Validation Loss: No valid validation batches")
             else:
                 print(f"  No validation data provided")
             
@@ -321,7 +501,7 @@ def main():
     # Training parameters optimized for 99% coverage
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size (reduced for very large windows)')
-    parser.add_argument('--learning_rate', type=float, default=0.00003, help='Learning rate (lower for stability)')
+    parser.add_argument('--learning_rate', type=float, default=0.000015, help='Learning rate (lower for stability)')
     parser.add_argument('--drop_rate', type=float, default=0.15, help='Dropout rate (higher for regularization)')
     parser.add_argument('--decay_step', type=int, default=8, help='Decay step')
     parser.add_argument('--decay_rate', type=float, default=0.92, help='Decay rate')

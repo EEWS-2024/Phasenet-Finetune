@@ -11,12 +11,22 @@ Ini hanya debug info dari TensorFlow yang tidak mempengaruhi hasil testing.
 import argparse
 import os
 import sys
+import time
+
+# Set environment variables BEFORE importing TensorFlow to prevent XLA issues
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # 0=all, 1=info+, 2=warning+, 3=error+
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'  # Prevent GPU memory allocation issues
+os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices=false'  # Disable XLA to avoid libdevice issues
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # Use only first GPU
+
 import tensorflow as tf
 tf.compat.v1.disable_eager_execution()
-
-# Reduce TensorFlow verbose output while keeping errors and important warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # 0=all, 1=info+, 2=warning+, 3=error+
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+
+# Disable verbose warnings
+import warnings
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=UserWarning)
 
 # Add phasenet to path
 sys.path.append(os.path.dirname(__file__))
