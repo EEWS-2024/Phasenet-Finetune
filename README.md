@@ -1,8 +1,42 @@
 # PhaseNet Indonesia - Complete Fine-tuning Guide
 
-## 📋 **OVERVIEW**
+## **OVERVIEW**
 
-Panduan lengkap untuk fine-tuning PhaseNet menggunakan dataset gempa Indonesia dengan coverage 99%. Dokumentasi ini menjelaskan seluruh proses dari persiapan data hingga training model dengan window size yang dioptimalkan untuk karakteristik seismik Indonesia.
+Panduan lengkap untuk fine-tuning PhaseNet menggunakan dataset gempa Indonesia. Dokumentasi ini menjelaskan seluruh proses dari persiapan data hingga training model dengan window size yang dioptimalkan untuk karakteristik seismik Indonesia.
+
+## **Data Yang Digunakan**
+
+- **Dataset**: Dataset gempa Indonesia yang sudah dipreprocess dan di-padding sehingga semuanya memiliki panjang yang sama (untuk NPZ)
+- **NPZ**: Dataset disimpan dalam format `.npz`, yang merupakan format kompresi dari NumPy dan memuat beberapa array sekaligus. Dataset ini berada dalam direktori:
+
+  ```
+  dataset_phasenet_aug/npz_padded/
+  ```
+
+  * Setiap file mewakili satu event seismik dari satu stasiun.
+  * Nama file tidak secara langsung mencerminkan tanggal atau lokasi, namun informasi tersebut dapat diperoleh dari atribut `t0` dan `station_id`.
+
+  * Setiap file `.npz` berisi beberapa *key* dengan deskripsi sebagai berikut:
+
+    | Key                | Tipe Data         | Bentuk     | Deskripsi                                                                              |
+    | ------------------ | ----------------- | ---------- | -------------------------------------------------------------------------------------- |
+    | `data`             | `float64 ndarray` | (30085, 3) | Data waveform seismik ter-*padding* untuk 3 channel: E (East), N (North), Z (Vertical) |
+    | `p_idx`            | `int64 ndarray`   | (1, 1)     | Indeks waktu kedatangan gelombang **P**                                                |
+    | `s_idx`            | `int64 ndarray`   | (1, 1)     | Indeks waktu kedatangan gelombang **S**                                                |
+    | `station_id`       | `str`             | ()         | ID stasiun seismik, misalnya `'BBJI'`                                                  |
+    | `t0`               | `str`             | ()         | Timestamp awal rekaman dalam format ISO, misalnya `'2017-02-13T08:12:33.369'`          |
+    | `channel`          | `str ndarray`     | (3,)       | Nama channel yang digunakan, misalnya `['BHE', 'BHN', 'BHZ']`                          |
+    | `channel_type`     | `str ndarray`     | (3,)       | Jenis channel berdasarkan orientasi: E, N, Z                                           |
+    | `is_augmented`     | `bool ndarray`    | (1,)       | Apakah data ini merupakan hasil augmentasi                                             |
+    | `original_channel` | `str ndarray`     | (3,)       | Nama channel asli sebelum augmentasi (jika ada)                                        |
+
+
+- **CSV**: Daftar file untuk training/validation, berada di direktori `dataset_phasenet_aug/padded_train_list.csv` dan `dataset_phasenet_aug/padded_valid_list.csv`
+  - **Format**: `dataset_phasenet_aug/padded_train_list.csv`
+  - **Format**: `dataset_phasenet_aug/padded_valid_list.csv`
+- **Window Size**: 135 detik
+- **Coverage**: 99%
+
 
 ### **Mengapa Perlu Fine-tuning Khusus Indonesia?**
 - **PhaseNet Original**: Window 30 detik → Coverage ~67% data Indonesia
