@@ -1,7 +1,5 @@
 # PhaseNet Indonesia - Complete Fine-tuning Guide
 
-## **OVERVIEW**
-
 Panduan lengkap untuk fine-tuning PhaseNet menggunakan dataset gempa Indonesia. Dokumentasi ini menjelaskan seluruh proses dari persiapan data hingga training model dengan window size yang dioptimalkan untuk karakteristik seismik Indonesia.
 
 ## **Data Yang Digunakan**
@@ -34,14 +32,34 @@ Panduan lengkap untuk fine-tuning PhaseNet menggunakan dataset gempa Indonesia. 
 - **CSV**: Daftar file untuk training/validation, berada di direktori `dataset_phasenet_aug/padded_train_list.csv` dan `dataset_phasenet_aug/padded_valid_list.csv`
   - **Format**: `dataset_phasenet_aug/padded_train_list.csv`
   - **Format**: `dataset_phasenet_aug/padded_valid_list.csv`
-- **Window Size**: 135 detik
-- **Coverage**: 99%
+* **mseed**: Ini adalah data asli sebelum dikonversi ke format `.npz`, disimpan dalam direktori:
 
+  ```
+  dataset_phasenet_aug/waveform/
+  ```
 
-### **Mengapa Perlu Fine-tuning Khusus Indonesia?**
-- **PhaseNet Original**: Window 30 detik → Coverage ~67% data Indonesia
-- **PhaseNet Indonesia**: Window 135 detik → Coverage ~99% data Indonesia
-- **Alasan**: Interval P-S gempa Indonesia lebih panjang (mean: 36 detik, max: 240 detik)
+  * Setiap file `.mseed` mewakili satu event seismik dari satu stasiun, sehingga akan berisi **3 trace**: komponen **E (East)**, **N (North)**, dan **Z (Vertical)**.
+  * Data **tidak di-*padding***, sehingga panjang setiap file **berbeda-beda**:
+
+    * Panjang maksimum: **30086 samples**
+    * Panjang minimum: **30076 samples**
+  * **Sampling rate** dari semua data telah di-*interpolate* menggunakan *linear interpolation* menjadi **100 Hz**, untuk menyesuaikan dengan kebutuhan PhaseNet (data asli dari gempa Indonesia hanya memiliki sampling rate 20 Hz).
+  * Channel gempa yang digunakan **tidak terbatas pada BH\*** saja, tetapi juga mencakup:
+
+    * **BL\***, **SH\***, **HL\***, **HH\***, dan **SL\***.
+    * Pemilihan ini dilakukan dengan syarat channel memiliki **3 komponen (E, N, Z)** dan **sampling rate minimal 20 Hz**.
+  * Alasan penggunaan channel yang bervariasi:
+
+    * **PhaseNet** dilatih dengan berbagai jenis channel, sehingga model dapat menangani data dengan variasi channel yang luas.
+    * Jika hanya menggunakan channel **BH\***, jumlah data sangat terbatas (**sekitar 600 file saja**), yang tidak cukup untuk pelatihan yang efektif.
+  * Untuk data dari channel selain BH\*:
+
+    * Walaupun hanya channel BH\* yang memiliki anotasi manual untuk **P dan S picks** dari GEOFON,
+    * Kami melakukan **anotasi otomatis** pada channel lainnya dengan cara:
+
+      * Mengambil waktu arrival **P dan S** dari channel **BH\***.
+      * Menerapkan waktu yang sama pada channel lain (BL\*, HL\*, dst) dalam event dan stasiun yang sama.
+      * Proses ini dilakukan karena umumnya tidak ada perbedaan waktu yang signifikan antar channel dalam satu stasiun yang sama.
 
 ---
 
