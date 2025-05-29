@@ -55,9 +55,23 @@ def test_fn(args, data_reader):
     if args.model_path:
         model_dir_to_use = os.path.dirname(args.model_path)
     else:
-        model_dir_to_use = find_latest_model_dir(args.model_dir)
-        if not model_dir_to_use:
-            print(f"❌ No model directory found in {args.model_dir}")
+        # Check if args.model_dir is already a specific model directory
+        try:
+            if os.path.exists(os.path.join(args.model_dir, 'checkpoint')) or \
+               os.path.exists(os.path.join(args.model_dir, 'final_model.ckpt.index')) or \
+               any(f.endswith('.ckpt.index') for f in os.listdir(args.model_dir) if os.path.isfile(os.path.join(args.model_dir, f))):
+                # args.model_dir is already a specific model directory
+                model_dir_to_use = args.model_dir
+                print(f"Using provided model directory: {model_dir_to_use}")
+            else:
+                # args.model_dir is a base directory, find latest subdirectory
+                model_dir_to_use = find_latest_model_dir(args.model_dir)
+                if not model_dir_to_use:
+                    print(f"❌ No model directory found in {args.model_dir}")
+                    return None
+                print(f"Found latest model directory: {model_dir_to_use}")
+        except (OSError, PermissionError) as e:
+            print(f"❌ Error accessing model directory {args.model_dir}: {e}")
             return None
     
     print(f"Using model directory: {model_dir_to_use}")
@@ -123,6 +137,17 @@ def test_fn(args, data_reader):
         # Test loop
         batch_count = 0
         total_samples = 0
+        successful_detections = {'P': 0, 'S': 0, 'PS': 0}
+        prob_stats = {'P_max': [], 'S_max': [], 'P_mean': [], 'S_mean': []}
+        
+        print(f"🚀 Starting testing on validation data...")
+        
+        # Define thresholds for detection
+        min_threshold = args.min_prob
+        med_threshold = min(min_threshold + 0.1, 0.9)
+        high_threshold = min(min_threshold + 0.2, 0.9)
+        
+        print(f"🎯 Detection thresholds: {min_threshold:.2f} / {med_threshold:.2f} / {high_threshold:.2f}")
         
         try:
             while True:
@@ -140,7 +165,21 @@ def test_fn(args, data_reader):
                 batch_size_actual = sample_batch.shape[0]
                 total_samples += batch_size_actual
                 
-                print(f"Processing batch {batch_count + 1}, samples: {batch_size_actual}")
+                # Show progress every 50 batches or if verbose every 10 batches
+                progress_interval = 10 if hasattr(args, 'verbose') and args.verbose else 50
+                if (batch_count + 1) % progress_interval == 0:
+                    p_rate = successful_detections['P'] / max(1, total_samples) * 100
+                    s_rate = successful_detections['S'] / max(1, total_samples) * 100
+                    ps_rate = successful_detections['PS'] / max(1, total_samples) * 100
+                    
+                    # Show probability statistics
+                    avg_p_max = np.mean(prob_stats['P_max'][-50:]) if prob_stats['P_max'] else 0
+                    avg_s_max = np.mean(prob_stats['S_max'][-50:]) if prob_stats['S_max'] else 0
+                    avg_p_mean = np.mean(prob_stats['P_mean'][-50:]) if prob_stats['P_mean'] else 0
+                    avg_s_mean = np.mean(prob_stats['S_mean'][-50:]) if prob_stats['S_mean'] else 0
+                    
+                    print(f"📊 Batch {batch_count + 1}: {total_samples} samples | P: {p_rate:.1f}% | S: {s_rate:.1f}% | PS: {ps_rate:.1f}%")
+                    print(f"   📈 Prob Stats - P_max: {avg_p_max:.3f}, S_max: {avg_s_max:.3f}, P_mean: {avg_p_mean:.3f}, S_mean: {avg_s_mean:.3f}")
                 
                 # Process each sample in batch
                 for i in range(batch_size_actual):
@@ -155,13 +194,32 @@ def test_fn(args, data_reader):
                     p_prob = pred[:, 0, 1]  # P-wave probability
                     s_prob = pred[:, 0, 2]  # S-wave probability
                     
-                    # Find peaks
-                    p_peaks, _ = find_peaks(p_prob, height=0.3, distance=30)
-                    s_peaks, _ = find_peaks(s_prob, height=0.3, distance=30)
+                    # Find peaks using configurable threshold
+                    # Use adaptive thresholds: min_prob, min_prob+0.1, min_prob+0.2
+                    p_peaks_high, _ = find_peaks(p_prob, height=high_threshold, distance=30)
+                    p_peaks_med, _ = find_peaks(p_prob, height=med_threshold, distance=30)  
+                    p_peaks_low, _ = find_peaks(p_prob, height=min_threshold, distance=30)
                     
-                    # Get best predictions
-                    p_pred = p_peaks[np.argmax(p_prob[p_peaks])] if len(p_peaks) > 0 else -1
-                    s_pred = s_peaks[np.argmax(s_prob[s_peaks])] if len(s_peaks) > 0 else -1
+                    s_peaks_high, _ = find_peaks(s_prob, height=high_threshold, distance=30)
+                    s_peaks_med, _ = find_peaks(s_prob, height=med_threshold, distance=30)
+                    s_peaks_low, _ = find_peaks(s_prob, height=min_threshold, distance=30)
+                    
+                    # Get best predictions using adaptive threshold
+                    p_pred = -1
+                    if len(p_peaks_high) > 0:
+                        p_pred = p_peaks_high[np.argmax(p_prob[p_peaks_high])]
+                    elif len(p_peaks_med) > 0:
+                        p_pred = p_peaks_med[np.argmax(p_prob[p_peaks_med])]
+                    elif len(p_peaks_low) > 0:
+                        p_pred = p_peaks_low[np.argmax(p_prob[p_peaks_low])]
+                    
+                    s_pred = -1
+                    if len(s_peaks_high) > 0:
+                        s_pred = s_peaks_high[np.argmax(s_prob[s_peaks_high])]
+                    elif len(s_peaks_med) > 0:
+                        s_pred = s_peaks_med[np.argmax(s_prob[s_peaks_med])]
+                    elif len(s_peaks_low) > 0:
+                        s_pred = s_peaks_low[np.argmax(s_prob[s_peaks_low])]
                     
                     # Calculate errors
                     p_error = abs(p_pred - p_true) if p_pred != -1 else -1
@@ -171,6 +229,20 @@ def test_fn(args, data_reader):
                     ps_true = s_true - p_true
                     ps_pred = s_pred - p_pred if p_pred != -1 and s_pred != -1 else -1
                     ps_error = abs(ps_pred - ps_true) if ps_pred != -1 else -1
+                    
+                    # Count successful detections
+                    if p_pred != -1:
+                        successful_detections['P'] += 1
+                    if s_pred != -1:
+                        successful_detections['S'] += 1
+                    if ps_pred != -1:
+                        successful_detections['PS'] += 1
+                    
+                    # Collect probability statistics
+                    prob_stats['P_max'].append(np.max(p_prob))
+                    prob_stats['S_max'].append(np.max(s_prob))
+                    prob_stats['P_mean'].append(np.mean(p_prob))
+                    prob_stats['S_mean'].append(np.mean(s_prob))
                     
                     result = {
                         'filename': fname,
@@ -188,17 +260,21 @@ def test_fn(args, data_reader):
                     }
                     results.append(result)
                     
-                    # Print sample results
-                    if i < 3:  # Print first 3 samples per batch
+                    # Show detailed output only if verbose flag is set
+                    if hasattr(args, 'verbose') and args.verbose and i < 3 and (batch_count + 1) % 10 == 0:
                         print(f"  {fname}:")
                         print(f"    P: true={p_true}, pred={p_pred}, error={p_error}")
                         print(f"    S: true={s_true}, pred={s_pred}, error={s_error}")
-                        print(f"    P-S: true={ps_true:.1f}s, pred={ps_pred/100:.1f}s" if ps_pred != -1 else f"    P-S: true={ps_true/100:.1f}s, pred=FAILED")
+                        print(f"    P-S: true={ps_true/100:.1f}s, pred={ps_pred/100:.1f}s" if ps_pred != -1 else f"    P-S: true={ps_true/100:.1f}s, pred=FAILED")
                 
                 batch_count += 1
                 
         except tf.errors.OutOfRangeError:
-            print(f"\nTesting completed. Total samples processed: {total_samples}")
+            final_p_rate = successful_detections['P'] / max(1, total_samples) * 100
+            final_s_rate = successful_detections['S'] / max(1, total_samples) * 100
+            final_ps_rate = successful_detections['PS'] / max(1, total_samples) * 100
+            print(f"\n✅ Testing completed!")
+            print(f"📈 Final Results: {total_samples} samples | P: {final_p_rate:.1f}% | S: {final_s_rate:.1f}% | PS: {final_ps_rate:.1f}%")
     
     # Save results
     results_df = pd.DataFrame(results)
@@ -334,6 +410,8 @@ def main():
     parser.add_argument('--output_dir', type=str, default='test_results_indonesia', help='Output directory')
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size for testing')
     parser.add_argument('--plot_results', action='store_true', help='Create performance plots')
+    parser.add_argument('--verbose', action='store_true', help='Show detailed output for each sample')
+    parser.add_argument('--min_prob', type=float, default=0.1, help='Minimum probability threshold for peak detection (default: 0.1)')
     
     # Window parameters
     parser.add_argument('--window_length', type=int, default=13500, help='Window length: 13500 samples (135s)')

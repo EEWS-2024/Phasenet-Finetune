@@ -20,6 +20,9 @@ DROP_RATE=0.15               # Standard dropout rate
 WEIGHT_DECAY=0.0001          # Standard weight decay
 SAVE_INTERVAL=5              # Save every 5 epochs
 
+# Testing parameters
+MIN_PROB=0.05                # Minimum probability threshold for detection (lower = more sensitive)
+
 echo "🎯 Configuration:"
 echo "   Dataset: $DATASET_DIR"
 echo "   Pre-trained model: $PRETRAINED_MODEL_DIR"
@@ -29,6 +32,7 @@ echo "   Batch size: $BATCH_SIZE"
 echo "   Learning rate: $LEARNING_RATE"
 echo "   Dropout rate: $DROP_RATE"
 echo "   Weight decay: $WEIGHT_DECAY"
+echo "   Testing min prob: $MIN_PROB"
 echo "=================================================="
 
 # Check if pre-trained model exists
@@ -96,7 +100,8 @@ if [ $? -eq 0 ]; then
             --model_dir="../$OUTPUT_MODEL_DIR/$LATEST_MODEL" \
             --output_dir="../test_results_indonesia" \
             --batch_size=2 \
-            --plot_results
+            --plot_results \
+            --min_prob=$MIN_PROB
         
         if [ $? -eq 0 ]; then
             echo "✅ Testing completed successfully!"
