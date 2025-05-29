@@ -1,5 +1,7 @@
 # PhaseNet Indonesia - Complete Fine-tuning Guide
 
+- Repository ini adalah fork dari [PhaseNet](https://github.com/AI4EPS/PhaseNet) yang telah diubah untuk menyesuaikan dengan dataset gempa Indonesia.
+
 Panduan lengkap untuk fine-tuning PhaseNet menggunakan dataset gempa Indonesia. Dokumentasi ini menjelaskan seluruh proses dari persiapan data hingga training model dengan window size yang dioptimalkan untuk karakteristik seismik Indonesia.
 
 ## **Data Yang Digunakan**
