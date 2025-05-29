@@ -10,7 +10,7 @@ echo "=================================================="
 # Configuration
 DATASET_DIR="dataset_phasenet_aug"
 PRETRAINED_MODEL_DIR="model/190703-214543"
-OUTPUT_MODEL_DIR="model_indonesia_99pct"
+OUTPUT_MODEL_DIR="model_indonesia"
 
 # Training parameters - OPTIMAL REALISTIC SETTINGS
 EPOCHS=1                   # Full training epochs
@@ -58,7 +58,7 @@ cd phasenet
 echo "🚀 Starting resume training with realistic parameters..."
 
 # Run training with realistic parameters
-python train_indonesia_99pct.py \
+python train_indonesia.py \
     --train_dir="../$DATASET_DIR/npz_padded" \
     --train_list="../$DATASET_DIR/train_list_99pct.csv" \
     --valid_dir="../$DATASET_DIR/npz_padded" \
@@ -88,7 +88,7 @@ if [ $? -eq 0 ]; then
     LATEST_MODEL=$(ls -t ../$OUTPUT_MODEL_DIR/ | head -n 1)
     
     if [ -n "$LATEST_MODEL" ]; then
-        python test_indonesia_99pct.py \
+        python test_indonesia.py \
             --test_dir="../$DATASET_DIR/npz_padded" \
             --test_list="../$DATASET_DIR/valid_list_99pct.csv" \
             --model_dir="../$OUTPUT_MODEL_DIR" \

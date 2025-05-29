@@ -14,7 +14,7 @@ tf.compat.v1.disable_eager_execution()
 sys.path.append(os.path.dirname(__file__))
 
 from model import ModelConfig, UNet
-from data_reader_indonesia_99pct import DataConfig_Indonesia_99pct, DataReader_Indonesia_99pct_Test
+from phasenet.data_reader_indonesia import DataConfig_Indonesia_99pct, DataReader_Indonesia_99pct_Test
 import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks
