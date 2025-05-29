@@ -4,12 +4,12 @@
 # Window size: 135 detik (13,500 samples) untuk menangkap 99% data Indonesia
 
 echo "=================================================="
-echo "🚀 TRAINING PHASENET INDONESIA 99% COVERAGE"
+echo "🚀 TRAINING PHASENET INDONESIA FROM SCRATCH"
 echo "=================================================="
 
 # Configuration
 DATASET_DIR="dataset_phasenet_aug"
-OUTPUT_MODEL_DIR="model_indonesia"
+OUTPUT_MODEL_DIR="model_indonesia/scratch"
 
 # Training parameters - OPTIMAL REALISTIC SETTINGS
 EPOCHS=1                   # Full training epochs
@@ -47,6 +47,9 @@ fi
 
 echo "✅ All prerequisites found"
 echo ""
+
+# Create output directories
+mkdir -p "$OUTPUT_MODEL_DIR"
 
 # Change to phasenet directory
 cd phasenet
@@ -103,8 +106,8 @@ if [ $? -eq 0 ]; then
     fi
     
     echo ""
-    echo "=== TRAINING SUMMARY ==="
-    echo "Training type: From scratch"
+    echo "=== TRAINING FROM SCRATCH SUMMARY ==="
+    echo "Training type: From scratch (random weights)"
     echo "Data: Indonesia"
     echo "Window size: 13500 samples (135 seconds)"
     echo "Batch size: $BATCH_SIZE"

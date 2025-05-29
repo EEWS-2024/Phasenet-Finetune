@@ -4,13 +4,13 @@
 # Resume dari model pre-trained yang sudah bagus: 190703-214543
 
 echo "=================================================="
-echo "🔄 RESUME TRAINING PHASENET INDONESIA 99% COVERAGE"
+echo "🔄 FINE-TUNING PHASENET INDONESIA"
 echo "=================================================="
 
 # Configuration
 DATASET_DIR="dataset_phasenet_aug"
 PRETRAINED_MODEL_DIR="model/190703-214543"
-OUTPUT_MODEL_DIR="model_indonesia"
+OUTPUT_MODEL_DIR="model_indonesia/finetuned"
 
 # Training parameters - OPTIMAL REALISTIC SETTINGS
 EPOCHS=1                   # Full training epochs
@@ -56,10 +56,13 @@ fi
 echo "✅ All prerequisites found"
 echo ""
 
+# Create output directories
+mkdir -p "$OUTPUT_MODEL_DIR"
+
 # Change to phasenet directory
 cd phasenet
 
-echo "🚀 Starting resume training with realistic parameters..."
+echo "🚀 Starting fine-tuning with realistic parameters..."
 
 # Run training with realistic parameters
 python train_indonesia.py \
@@ -114,6 +117,7 @@ if [ $? -eq 0 ]; then
     
     echo ""
     echo "=== FINE-TUNING SUMMARY ==="
+    echo "Training type: Fine-tuning (from pretrained)"
     echo "Pre-trained model: 190703-214543 (pretrained model)"
     echo "Fine-tuned untuk: Data Indonesia"
     echo "Window size: 13500 samples (135 seconds)"
