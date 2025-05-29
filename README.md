@@ -27,7 +27,8 @@ Panduan lengkap untuk fine-tuning PhaseNet menggunakan dataset gempa Indonesia. 
     | `channel_type`     | `str ndarray`     | (3,)       | Jenis channel berdasarkan orientasi: E, N, Z                                           |
     | `is_augmented`     | `bool ndarray`    | (1,)       | Apakah data ini merupakan hasil augmentasi                                             |
     | `original_channel` | `str ndarray`     | (3,)       | Nama channel asli sebelum augmentasi (jika ada)                                        |
-
+  
+  * Alasan semua data di-padding adalah karena PhaseNet membutuhkan data dengan panjang yang sama untuk training, sehingga kami memilih untuk membuat semua data memiliki panjang yang sama dengan cara padding, namun ketika masih dalam file mseed datanya sudah memiliki panjang yang mirip sehingga paddingnya tidak terlalu besar (hanya 10 samples saja).
 
 - **CSV**: Daftar file untuk training/validation, berada di direktori `dataset_phasenet_aug/padded_train_list.csv` dan `dataset_phasenet_aug/padded_valid_list.csv`
   - **Format**: `dataset_phasenet_aug/padded_train_list.csv`
@@ -60,27 +61,6 @@ Panduan lengkap untuk fine-tuning PhaseNet menggunakan dataset gempa Indonesia. 
       * Mengambil waktu arrival **P dan S** dari channel **BH\***.
       * Menerapkan waktu yang sama pada channel lain (BL\*, HL\*, dst) dalam event dan stasiun yang sama.
       * Proses ini dilakukan karena umumnya tidak ada perbedaan waktu yang signifikan antar channel dalam satu stasiun yang sama.
-
----
-
-## 🎯 **PREREQUISITES**
-
-### **Data yang Dibutuhkan:**
-1. **File NPZ padded**: Data waveform yang sudah dipreprocess dan di-padding
-2. **File CSV dengan header 'fname'**: Daftar file untuk training/validation
-3. **Environment**: Docker container dengan TensorFlow 1.x dan conda environment
-
-### **Struktur Data Minimum:**
-```
-dataset_phasenet_aug/
-├── npz_padded/                    # File NPZ data
-│   ├── file001.npz
-│   ├── file002.npz
-│   └── ...
-├── padded_train_list.csv          # Training list dengan header 'fname'
-├── padded_valid_list.csv          # Validation list dengan header 'fname'
-└── (direktori output akan dibuat otomatis)
-```
 
 ---
 
