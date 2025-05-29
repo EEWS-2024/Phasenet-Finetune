@@ -1,0 +1,4 @@
+event_id,origin_time,latitude,longitude,depth_km,magnitude,magnitude_type,event_type,event_region,arrivals_count,s_pick_time,s_pick_station,s_pick_network,s_pick_channel,s_pick_phase,s_pick_method,s_pick_time_uncertainty,p_pick_time,p_pick_station,p_pick_network,p_pick_channel,p_pick_phase,p_pick_method,p_pick_time_uncertainty,p_s_interval_sec
+gfz2020iwiv,2020-05-06T01:43:49.090000Z,1.452,126.52,57.2,4.8,Mw,,Northern Molucca Sea,46,2020-05-06T01:44:21.100000Z,TNTI,GE,BHE,s,,,2020-05-06T01:44:06.910000Z,TNTI,GE,BHZ,p,smi:org.gfz-potsdam.de/geofon/AIC,,14.19
+gfz2020ilwy,2020-04-30T08:21:59.190000Z,-7.564,106.683,28.8,4.73,M,,"Java, Indonesia",34,2020-04-30T08:22:27.510000Z,BBJI,GE,BHN,s,,,2020-04-30T08:22:15.670000Z,BBJI,GE,BHZ,p,,,11.84
+gfz2020iiaf,2020-04-28T05:28:33.050000Z,-7.139,129.977,96.5,4.75,mb,,Banda Sea,24,2020-04-28T05:29:20.090000Z,SAUI,GE,BHZ,s,,,2020-04-28T05:29:01.000000Z,SAUI,GE,BHZ,p,,,19.09

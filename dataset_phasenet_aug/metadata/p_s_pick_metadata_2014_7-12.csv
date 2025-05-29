@@ -1,0 +1,6 @@
+event_id,origin_time,latitude,longitude,depth_km,magnitude,magnitude_type,event_type,event_region,arrivals_count,s_pick_time,s_pick_station,s_pick_network,s_pick_channel,s_pick_phase,s_pick_method,s_pick_time_uncertainty,p_pick_time,p_pick_station,p_pick_network,p_pick_channel,p_pick_phase,p_pick_method,p_pick_time_uncertainty,p_s_interval_sec
+gfz2014ubqb,2014-10-13T11:57:21.180000Z,-3.499,135.413,50.9,4.72,mb,,"Irian Jaya Region, Indonesia",45,2014-10-13T11:58:47.310000Z,FAKI,GE,BHZ,s,,,2014-10-13T11:58:09.660000Z,FAKI,GE,BHZ,p,smi:org.gfz-potsdam.de/geofon/AIC,,37.65
+gfz2014rsvi,2014-09-10T05:19:23.700000Z,-0.27,125.226,62.6,5.85,mb,,Southern Molucca Sea,76,2014-09-10T05:20:37.130000Z,LUWI,GE,BHZ,s,,,2014-09-10T05:20:02.520000Z,LUWI,GE,BHZ,p,,,34.61
+gfz2014rffr,2014-09-02T18:39:37.830000Z,-10.273,111.106,10.0,4.66,mb,,"South of Java, Indonesia",40,2014-09-02T18:40:46.470000Z,UGM,GE,BHZ,s,,,2014-09-02T18:40:16.610000Z,UGM,GE,BHZ,p,smi:org.gfz-potsdam.de/geofon/AIC,,29.86
+gfz2014ojjv,2014-07-24T08:41:08.610000Z,-9.211,111.532,36.5,5.16,mb,,"South of Java, Indonesia",167,2014-07-24T08:41:53.020000Z,UGM,GE,BHN,s,,,2014-07-24T08:41:34.070000Z,UGM,GE,BHZ,p,,,18.95
+gfz2014ojjv,2014-07-24T08:41:08.610000Z,-9.211,111.532,36.5,5.16,mb,,"South of Java, Indonesia",167,2014-07-24T08:42:18.520000Z,JAGI,GE,BHN,s,,,2014-07-24T08:41:49.120000Z,JAGI,GE,BHZ,p,,,29.4

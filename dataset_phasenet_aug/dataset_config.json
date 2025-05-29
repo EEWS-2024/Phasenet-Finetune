@@ -1,0 +1,7 @@
+{
+  "fixed_length_samples": 30081,
+  "fixed_length_seconds": 300.81,
+  "sampling_rate": 100.0,
+  "pre_p_time": 30.0,
+  "post_s_time": 30.0
+}

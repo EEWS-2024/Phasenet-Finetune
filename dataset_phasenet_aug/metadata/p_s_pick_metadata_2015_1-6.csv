@@ -1,0 +1,3 @@
+event_id,origin_time,latitude,longitude,depth_km,magnitude,magnitude_type,event_type,event_region,arrivals_count,s_pick_time,s_pick_station,s_pick_network,s_pick_channel,s_pick_phase,s_pick_method,s_pick_time_uncertainty,p_pick_time,p_pick_station,p_pick_network,p_pick_channel,p_pick_phase,p_pick_method,p_pick_time_uncertainty,p_s_interval_sec
+gfz2015kylx,2015-06-05T16:38:09.180000Z,-9.115,111.511,80.0,4.96,mb,,"South of Java, Indonesia",61,2015-06-05T16:38:55.220000Z,UGM,GE,BHZ,s,,,2015-06-05T16:38:34.160000Z,UGM,GE,BHZ,p,smi:org.gfz-potsdam.de/geofon/AIC,,21.06
+gfz2015bvov,2015-01-27T00:53:21.300000Z,1.282,97.25,27.7,5.48,Mw,,"Northern Sumatra, Indonesia",342,2015-01-27T00:53:39.350000Z,GSI,GE,BHZ,s,,,2015-01-27T00:53:30.510000Z,GSI,GE,BHZ,p,,,8.84

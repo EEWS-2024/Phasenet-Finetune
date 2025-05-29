@@ -1,0 +1,9 @@
+event_id,origin_time,latitude,longitude,depth_km,magnitude,magnitude_type,event_type,event_region,arrivals_count,s_pick_time,s_pick_station,s_pick_network,s_pick_channel,s_pick_phase,s_pick_method,s_pick_time_uncertainty,p_pick_time,p_pick_station,p_pick_network,p_pick_channel,p_pick_phase,p_pick_method,p_pick_time_uncertainty,p_s_interval_sec
+gfz2015ycis,2015-12-09T19:31:52.890000Z,-4.191,129.517,8.8,4.81,mb,,Banda Sea,44,2015-12-09T19:33:16.570000Z,FAKI,GE,BHE,s,,,2015-12-09T19:32:40.540000Z,FAKI,GE,BHZ,p,,,36.03
+gfz2015ycfz,2015-12-09T18:09:06.430000Z,-4.166,129.41,4.4,3.74,mb,,Banda Sea,16,2015-12-09T18:09:27.350000Z,BNDI,GE,BHN,s,,,2015-12-09T18:09:18.090000Z,BNDI,GE,BHZ,p,,,9.26
+gfz2015ycdd,2015-12-09T16:42:47.210000Z,-4.157,129.511,8.3,4.21,mb,,Banda Sea,27,2015-12-09T16:43:05.990000Z,BNDI,GE,BHE,s,,,2015-12-09T16:42:58.260000Z,BNDI,GE,BHZ,p,,,7.73
+gfz2015vcni,2015-10-28T05:15:08.490000Z,-8.499,109.41,54.4,4.36,mb,,"Java, Indonesia",46,2015-10-28T05:15:44.820000Z,UGM,GE,BHE,s,,,2015-10-28T05:15:29.410000Z,UGM,GE,BHZ,p,,,15.41
+gfz2015vcni,2015-10-28T05:15:08.490000Z,-8.499,109.41,54.4,4.36,mb,,"Java, Indonesia",46,2015-10-28T05:15:58.890000Z,SMRI,GE,BHE,s,,,2015-10-28T05:15:36.320000Z,SMRI,GE,BHZ,p,,,22.57
+gfz2015thvg,2015-10-02T15:51:54.280000Z,1.217,125.057,119.4,5.06,Mw,,Northern Molucca Sea,159,2015-10-02T15:52:58.900000Z,TNTI,GE,BHZ,s,,,2015-10-02T15:52:32.460000Z,TNTI,GE,BHZ,p,smi:org.gfz-potsdam.de/geofon/AIC,,26.44
+gfz2015thvg,2015-10-02T15:51:54.280000Z,1.217,125.057,119.4,5.06,Mw,,Northern Molucca Sea,159,2015-10-02T15:53:19.110000Z,LUWI,GE,BHZ,s,,,2015-10-02T15:52:44.310000Z,LUWI,GE,BHZ,p,smi:org.gfz-potsdam.de/geofon/AIC,,34.8
+gfz2015thvg,2015-10-02T15:51:54.280000Z,1.217,125.057,119.4,5.06,Mw,,Northern Molucca Sea,159,2015-10-02T15:53:19.030000Z,SANI,GE,BHZ,s,,,2015-10-02T15:52:43.510000Z,SANI,GE,BHZ,p,smi:org.gfz-potsdam.de/geofon/AIC,,35.52

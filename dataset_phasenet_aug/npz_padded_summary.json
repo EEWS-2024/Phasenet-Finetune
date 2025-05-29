@@ -1,0 +1,62 @@
+{
+  "total_files": 2053,
+  "data_length_stats": {
+    "min": 30085,
+    "max": 30085,
+    "mean": 30085.0,
+    "unique_lengths": [
+      30085
+    ]
+  },
+  "p_index_stats": {
+    "min": 3000,
+    "max": 3002,
+    "mean": 3000.736483195324,
+    "files_below_3000": 0
+  },
+  "s_index_stats": {
+    "min": 3286,
+    "max": 27082,
+    "mean": 6599.663906478324
+  },
+  "station_distribution": {
+    "TNTI": 265,
+    "FAKI": 248,
+    "UGM": 190,
+    "LUWI": 177,
+    "PLAI": 153,
+    "JAGI": 126,
+    "SOEI": 115,
+    "SANI": 103,
+    "TOLI2": 98,
+    "MNAI": 94,
+    "MMRI": 85,
+    "SAUI": 82,
+    "GSI": 74,
+    "BNDI": 67,
+    "SMRI": 49,
+    "LHMI": 44,
+    "BBJI": 37,
+    "BKNI": 26,
+    "GENI": 9,
+    "BKB": 7,
+    "PMBI": 4
+  },
+  "channel_type_distribution": {
+    "BH": 632,
+    "BL": 583,
+    "SH": 500,
+    "HL": 137,
+    "HH": 135,
+    "SL": 66
+  },
+  "augmentation_stats": {
+    "original": 632,
+    "augmented": 1421
+  },
+  "data_quality": {
+    "zero_data_files": 0,
+    "small_range_files": 0,
+    "outlier_files": 507
+  }
+}
