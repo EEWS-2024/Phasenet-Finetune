@@ -88,7 +88,7 @@ if [ $? -eq 0 ]; then
             --test_dir="../$DATASET_DIR/npz_padded" \
             --test_list="../$DATASET_DIR/valid_list_99pct.csv" \
             --model_dir="../$OUTPUT_MODEL_DIR/$LATEST_MODEL" \
-            --output_dir="../test_results_indonesia" \
+            --output_dir="../$OUTPUT_MODEL_DIR/$LATEST_MODEL/test_results" \
             --batch_size=2 \
             --plot_results \
             --min_prob=$MIN_PROB
@@ -111,6 +111,7 @@ if [ $? -eq 0 ]; then
     echo "Learning rate: $LEARNING_RATE (optimized)"
     echo "Total epochs: $EPOCHS"
     echo "Output model: ../$OUTPUT_MODEL_DIR/$LATEST_MODEL"
+    echo "Test results: ../$OUTPUT_MODEL_DIR/$LATEST_MODEL/test_results"
     echo "========================="
 else
     echo ""
