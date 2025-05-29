@@ -14,7 +14,7 @@ tf.compat.v1.disable_eager_execution()
 sys.path.append(os.path.dirname(__file__))
 
 from model import ModelConfig, UNet
-from phasenet.data_reader_indonesia import DataConfig_Indonesia_99pct, DataReader_Indonesia_99pct_Train
+from phasenet.data_reader_indonesia import DataConfig_Indonesia, DataReader_Indonesia_Train
 import numpy as np
 import pandas as pd
 import json
@@ -281,14 +281,14 @@ def main():
     print("=" * 60)
     
     # Create data config
-    data_config = DataConfig_Indonesia_99pct(
+    data_config = DataConfig_Indonesia(
         window_length=args.window_length,
         X_shape=[args.window_length, 1, 3],
         Y_shape=[args.window_length, 1, 3]
     )
     
     # Create training data reader
-    data_reader_train = DataReader_Indonesia_99pct_Train(
+    data_reader_train = DataReader_Indonesia_Train(
         format=args.format,
         config=data_config,
         data_dir=args.train_dir,
@@ -298,7 +298,7 @@ def main():
     # Create validation data reader if provided
     data_reader_valid = None
     if args.valid_dir and args.valid_list:
-        data_reader_valid = DataReader_Indonesia_99pct_Train(
+        data_reader_valid = DataReader_Indonesia_Train(
             format=args.format,
             config=data_config,
             data_dir=args.valid_dir,

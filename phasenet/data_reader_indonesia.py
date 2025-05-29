@@ -13,7 +13,7 @@ import pandas as pd
 from data_reader import DataReader, DataConfig, normalize_long
 import os
 
-class DataConfig_Indonesia_99pct(DataConfig):
+class DataConfig_Indonesia(DataConfig):
     """Konfigurasi khusus untuk data Indonesia dengan 99% coverage"""
     
     # Berdasarkan analisis data Indonesia untuk 99% coverage
@@ -44,10 +44,10 @@ class DataConfig_Indonesia_99pct(DataConfig):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-class DataReader_Indonesia_99pct_Train(DataReader):
+class DataReader_Indonesia_Train(DataReader):
     """Data Reader untuk training dengan 99% coverage data Indonesia"""
     
-    def __init__(self, format="numpy", config=DataConfig_Indonesia_99pct(), **kwargs):
+    def __init__(self, format="numpy", config=DataConfig_Indonesia(), **kwargs):
         super().__init__(format=format, config=config, **kwargs)
         
         self.min_event_gap = config.min_event_gap
@@ -187,10 +187,10 @@ class DataReader_Indonesia_99pct_Train(DataReader):
         
         return dataset
 
-class DataReader_Indonesia_99pct_Test(DataReader):
+class DataReader_Indonesia_Test(DataReader):
     """Data Reader untuk testing dengan 99% coverage data Indonesia"""
     
-    def __init__(self, format="numpy", config=DataConfig_Indonesia_99pct(), **kwargs):
+    def __init__(self, format="numpy", config=DataConfig_Indonesia(), **kwargs):
         super().__init__(format=format, config=config, **kwargs)
         
         self.window_length = config.window_length

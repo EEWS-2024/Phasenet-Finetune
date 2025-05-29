@@ -14,7 +14,7 @@ tf.compat.v1.disable_eager_execution()
 sys.path.append(os.path.dirname(__file__))
 
 from model import ModelConfig, UNet
-from phasenet.data_reader_indonesia import DataConfig_Indonesia_99pct, DataReader_Indonesia_99pct_Test
+from phasenet.data_reader_indonesia import DataConfig_Indonesia, DataReader_Indonesia_Test
 import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks
@@ -352,14 +352,14 @@ def main():
     print("=" * 60)
     
     # Create data config
-    data_config = DataConfig_Indonesia_99pct(
+    data_config = DataConfig_Indonesia(
         window_length=args.window_length,
         X_shape=[args.window_length, 1, 3],
         Y_shape=[args.window_length, 1, 3]
     )
     
     # Create data reader
-    data_reader = DataReader_Indonesia_99pct_Test(
+    data_reader = DataReader_Indonesia_Test(
         format=args.format,
         config=data_config,
         data_dir=args.test_dir,
