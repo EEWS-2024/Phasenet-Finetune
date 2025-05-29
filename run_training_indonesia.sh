@@ -11,13 +11,13 @@ echo "=================================================="
 DATASET_DIR="dataset_phasenet_aug"
 OUTPUT_MODEL_DIR="model_indonesia/scratch"
 
-# Training parameters - OPTIMAL REALISTIC SETTINGS
-EPOCHS=1                   # Full training epochs
-BATCH_SIZE=8                 # Increased batch size for better training
-LEARNING_RATE=0.0003         # Higher learning rate (3e-4) for faster convergence
-DROP_RATE=0.15               # Standard dropout rate
-WEIGHT_DECAY=0.0001          # Standard weight decay
-SAVE_INTERVAL=5              # Save every 5 epochs
+# Training parameters optimized untuk Indonesia 99% coverage
+EPOCHS=3
+BATCH_SIZE=128                    # Reduced untuk very large windows (13,500 samples)
+LEARNING_RATE=0.00003          # Reduced significantly to prevent gradient explosion
+DROP_RATE=0.15                 # Higher dropout untuk regularization
+WEIGHT_DECAY=0.0001           # L2 regularization
+SAVE_INTERVAL=10              # Save checkpoint every 10 epochs
 
 # Testing parameters
 MIN_PROB=0.05                # Minimum probability threshold for detection (lower = more sensitive)

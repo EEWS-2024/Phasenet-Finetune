@@ -1,48 +1,43 @@
 #!/bin/bash
 
-# Script untuk melanjutkan training PhaseNet Indonesia dengan 99% coverage
-# Resume dari model scratch yang sudah berhasil
+# Script untuk Transfer Learning PhaseNet Indonesia
+# Menggunakan pretrained model 190703-214543 (30s) untuk model 135s
 
 echo "=================================================="
-echo "🔄 RESUME TRAINING PHASENET INDONESIA"
+echo "🔄 TRANSFER LEARNING PHASENET INDONESIA"
 echo "=================================================="
 
 # Configuration
 DATASET_DIR="dataset_phasenet_aug"
-# Use latest successful scratch model instead of incompatible pretrained
-LATEST_SCRATCH_MODEL=$(ls -t model_indonesia/scratch/ | head -n 1)
-PRETRAINED_MODEL_DIR="model_indonesia/scratch/$LATEST_SCRATCH_MODEL"
-OUTPUT_MODEL_DIR="model_indonesia/resume"
+PRETRAINED_MODEL_DIR="model/190703-214543"  # Model bagus yang harus digunakan
+OUTPUT_MODEL_DIR="model_indonesia/transfer_learning"
 
-# Training parameters - SAFE SETTINGS THAT WORK
-EPOCHS=20                    # Continue training
-BATCH_SIZE=8                 # SAFE batch size untuk 13,500 samples
-LEARNING_RATE=0.000015       # Even LOWER learning rate untuk resume (half of 3e-5)
-DROP_RATE=0.15               # Standard dropout rate
-WEIGHT_DECAY=0.0001          # Standard weight decay
-SAVE_INTERVAL=5              # Save every 5 epochs
+# Training parameters - EXTREMELY DEFENSIVE untuk guaranteed success
+EPOCHS=100                   # More epochs karena learning rate sangat rendah
+BATCH_SIZE=1                 # SINGLE sample per batch (most stable possible)
+LEARNING_RATE=0.0000005      # EXTREMELY LOW learning rate (5e-7) for absolute stability
+DROP_RATE=0.02               # Almost no dropout untuk maximum stability
+WEIGHT_DECAY=0.000001        # Minimal weight decay
+SAVE_INTERVAL=10             # Save every 10 epochs
 
 # Testing parameters
 MIN_PROB=0.05                # Minimum probability threshold for detection
 
 echo "🎯 Configuration:"
 echo "   Dataset: $DATASET_DIR"
-echo "   Latest scratch model: $LATEST_SCRATCH_MODEL"
-echo "   Pre-trained model: $PRETRAINED_MODEL_DIR"
+echo "   Pretrained model: $PRETRAINED_MODEL_DIR (30s model -> 135s)"
 echo "   Output model: $OUTPUT_MODEL_DIR"
 echo "   Epochs: $EPOCHS"
-echo "   Batch size: $BATCH_SIZE (SAFE)"
-echo "   Learning rate: $LEARNING_RATE (VERY LOW for stability)"
+echo "   Batch size: $BATCH_SIZE (SINGLE sample per batch)"
+echo "   Learning rate: $LEARNING_RATE (EXTREMELY LOW for transfer)"
 echo "   Dropout rate: $DROP_RATE"
 echo "   Weight decay: $WEIGHT_DECAY"
 echo "   Testing min prob: $MIN_PROB"
 echo "=================================================="
 
-# Check if latest scratch model exists
+# Check if pretrained model exists
 if [ ! -d "$PRETRAINED_MODEL_DIR" ]; then
-    echo "❌ Latest scratch model directory not found: $PRETRAINED_MODEL_DIR"
-    echo "Available models:"
-    ls -la model_indonesia/scratch/
+    echo "❌ Pretrained model directory not found: $PRETRAINED_MODEL_DIR"
     exit 1
 fi
 
@@ -67,9 +62,11 @@ mkdir -p "$OUTPUT_MODEL_DIR"
 # Change to phasenet directory
 cd phasenet
 
-echo "🚀 Starting resume training with SAFE parameters..."
+echo "🚀 Starting TRANSFER LEARNING dengan architecture adaptation..."
+echo "   Loading weights dari model 30s ke architecture 135s"
+echo "   Ini memerlukan partial loading dengan skip incompatible layers"
 
-# Run training with SAFE parameters
+# Run transfer learning dengan VERY SAFE parameters
 python train_indonesia.py \
     --train_dir="../$DATASET_DIR/npz_padded" \
     --train_list="../$DATASET_DIR/train_list_99pct.csv" \
@@ -90,9 +87,9 @@ python train_indonesia.py \
 if [ $? -eq 0 ]; then
     echo ""
     echo "=================================================="
-    echo "✅ RESUME TRAINING COMPLETED SUCCESSFULLY!"
+    echo "✅ TRANSFER LEARNING COMPLETED SUCCESSFULLY!"
     echo ""
-    echo "Model resumed tersimpan di: ../$OUTPUT_MODEL_DIR"
+    echo "Model transfer learned tersimpan di: ../$OUTPUT_MODEL_DIR"
     echo ""
     echo "Running quick test on validation data..."
     
@@ -107,7 +104,7 @@ if [ $? -eq 0 ]; then
             --test_list="../$DATASET_DIR/valid_list_99pct.csv" \
             --model_dir="../$OUTPUT_MODEL_DIR/$LATEST_MODEL" \
             --output_dir="../$OUTPUT_MODEL_DIR/$LATEST_MODEL/test_results" \
-            --batch_size=2 \
+            --batch_size=1 \
             --plot_results \
             --min_prob=$MIN_PROB
         
@@ -121,20 +118,20 @@ if [ $? -eq 0 ]; then
     fi
     
     echo ""
-    echo "=== RESUME TRAINING SUMMARY ==="
-    echo "Training type: Resume (from successful scratch model)"
-    echo "Base model: $LATEST_SCRATCH_MODEL"
-    echo "Resume untuk: Extended training Indonesia"
+    echo "=== TRANSFER LEARNING SUMMARY ==="
+    echo "Training type: Transfer Learning (30s -> 135s)"
+    echo "Base model: 190703-214543 (pretrained 30s model)"
+    echo "Target: Indonesia 135s windows"
     echo "Window size: 13500 samples (135 seconds)"
-    echo "Batch size: $BATCH_SIZE (SAFE)"
-    echo "Learning rate: $LEARNING_RATE (VERY LOW untuk stability)"
+    echo "Batch size: $BATCH_SIZE (SINGLE sample per batch)"
+    echo "Learning rate: $LEARNING_RATE (EXTREMELY LOW)"
     echo "Total epochs: $EPOCHS"
     echo "Output model: ../$OUTPUT_MODEL_DIR/$LATEST_MODEL"
     echo "Test results: ../$OUTPUT_MODEL_DIR/$LATEST_MODEL/test_results"
     echo "========================="
 else
     echo ""
-    echo "❌ TRAINING FAILED!"
+    echo "❌ TRANSFER LEARNING FAILED!"
     echo "Check the error messages above for details."
     exit 1
 fi 
