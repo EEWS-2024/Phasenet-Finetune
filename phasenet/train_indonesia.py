@@ -14,7 +14,7 @@ tf.compat.v1.disable_eager_execution()
 sys.path.append(os.path.dirname(__file__))
 
 from model import ModelConfig, UNet
-from phasenet.data_reader_indonesia import DataConfig_Indonesia, DataReader_Indonesia_Train
+from data_reader_indonesia import DataConfig_Indonesia, DataReader_Indonesia_Train
 import numpy as np
 import pandas as pd
 import json

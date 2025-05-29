@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Script testing PhaseNet Indonesia dengan 99% coverage
-Window size: 135 detik (13,500 samples)
+Testing script untuk PhaseNet Indonesia dengan 99% coverage
+Window size: 135 detik (13,500 samples) untuk menangkap 99% data Indonesia
 """
 
 import argparse
@@ -14,13 +14,12 @@ tf.compat.v1.disable_eager_execution()
 sys.path.append(os.path.dirname(__file__))
 
 from model import ModelConfig, UNet
-from phasenet.data_reader_indonesia import DataConfig_Indonesia, DataReader_Indonesia_Test
+from data_reader_indonesia import DataConfig_Indonesia, DataReader_Indonesia_Test
 import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 import json
-import datetime
 
 # Simple utility function to replace missing import
 def LoadConfig(model_dir):
