@@ -69,6 +69,7 @@ Panduan lengkap untuk fine-tuning PhaseNet menggunakan dataset gempa Indonesia. 
 Berdasarkan analisis 2,053 file NPZ dataset Indonesia:
 
 ### **Statistik P-S Interval:**
+- P-S interval di sini maksudnya adalah interval waktu antara gelombang P dan S.
 - **Mean**: 36.0 detik (3,599 samples)
 - **Median**: 29.8 detik (2,976 samples)
 - **99th percentile**: 117.1 detik (11,707 samples)
@@ -80,6 +81,9 @@ Berdasarkan analisis 2,053 file NPZ dataset Indonesia:
 - Sedang (40-60s): 18.7% (384 file)
 - Panjang (60-120s): 13.1% (269 file)
 - Sangat Panjang (> 120s): 1.0% (20 file)
+
+### ** Permasalahan yang muncul saat training:**
+- Phasenet dilatih hanya dengan tiap datanya 3000 samples, namun data gempa yang kami miliki memiliki panjang 30086 samples.
 
 ### **Solusi Window Size:**
 - **Window 135 detik (13,500 samples)** untuk menangkap 99% data
