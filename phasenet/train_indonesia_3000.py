@@ -503,9 +503,9 @@ def main():
     parser.add_argument('--format', type=str, default='numpy', help='Data format')
     
     # Model parameters
-    parser.add_argument('--model_dir', type=str, default='model_indonesia_3000', help='Model directory')
+    parser.add_argument('--model_dir', type=str, default='model_indonesia/finetuned', help='Model directory')
     parser.add_argument('--pretrained_model_path', type=str, default='model/190703-214543', help='Path to pretrained model')
-    parser.add_argument('--log_dir', type=str, default='logs_indonesia_3000', help='Log directory')
+    parser.add_argument('--log_dir', type=str, default='logs_indonesia', help='Log directory')
     
     # Training parameters optimized for sliding window
     parser.add_argument('--epochs', type=int, default=50, help='Number of epochs (fewer needed with pretrained)')
