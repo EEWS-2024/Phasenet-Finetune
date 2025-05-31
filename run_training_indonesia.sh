@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Script untuk menjalankan training PhaseNet Indonesia dengan 99% coverage
-# Window size: 135 detik (13,500 samples) untuk menangkap 99% data Indonesia
+# Script untuk menjalankan training PhaseNet Indonesia 
+# Window size: 135 detik (13,500 samples) untuk menangkap 
 
 echo "=================================================="
 echo "🚀 TRAINING PHASENET INDONESIA FROM SCRATCH"
@@ -11,7 +11,7 @@ echo "=================================================="
 DATASET_DIR="dataset_phasenet_aug"
 OUTPUT_MODEL_DIR="model_indonesia/scratch"
 
-# Training parameters optimized untuk Indonesia 99% coverage
+# Training parameters optimized untuk Indonesia
 EPOCHS=3
 BATCH_SIZE=128                    # Reduced untuk very large windows (13,500 samples)
 LEARNING_RATE=0.00003          # Reduced significantly to prevent gradient explosion
