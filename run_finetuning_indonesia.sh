@@ -82,8 +82,8 @@ echo "  Transfer learning: NCEDC pretrained model"
 echo ""
 
 # Create output directories
-mkdir -p model_indonesia_3000
-mkdir -p logs_indonesia_3000
+mkdir -p model_indonesia/finetuned
+mkdir -p logs_indonesia/finetuned
 
 echo "🔄 Starting training..."
 echo "   (Training akan menggunakan sliding window strategy)"
@@ -95,9 +95,9 @@ python phasenet/train_indonesia_3000.py \
     --train_dir "$TRAIN_DIR" \
     --train_list "$TRAIN_LIST" \
     $VALIDATION_ARGS \
-    --model_dir model_indonesia_3000 \
+    --model_dir model_indonesia/finetuned \
     --pretrained_model_path "$PRETRAINED_MODEL" \
-    --log_dir logs_indonesia_3000 \
+    --log_dir logs_indonesia/finetuned \
     --epochs $EPOCHS \
     --batch_size $BATCH_SIZE \
     --learning_rate $LEARNING_RATE \
@@ -116,8 +116,8 @@ if [ $TRAINING_EXIT_CODE -eq 0 ]; then
     echo "✅ Training completed successfully!"
     echo ""
     echo "📁 Output files:"
-    echo "  Models: model_indonesia_3000/sliding3000_YYMMDD-HHMMSS/"
-    echo "  Logs: logs_indonesia_3000/"
+    echo "  Models: model_indonesia/finetuned/sliding3000_YYMMDD-HHMMSS/"
+    echo "  Logs: logs_indonesia/finetuned/"
     echo ""
     echo "📈 Generated files dalam model directory:"
     echo "  - model checkpoints (.ckpt files)"
@@ -129,7 +129,7 @@ if [ $TRAINING_EXIT_CODE -eq 0 ]; then
     echo "   Gunakan model terbaru untuk mendapatkan hasil optimal."
     
     # Find the latest model
-    LATEST_MODEL=$(find model_indonesia_3000 -name "sliding3000_*" -type d | sort | tail -1)
+    LATEST_MODEL=$(find model_indonesia/finetuned -name "sliding3000_*" -type d | sort | tail -1)
     if [ -n "$LATEST_MODEL" ]; then
         echo ""
         echo "📍 Latest model: $LATEST_MODEL"
@@ -147,7 +147,7 @@ else
     echo ""
     echo "🔍 Check log files untuk debugging:"
     echo "  - Training output di atas"
-    echo "  - Log directory: logs_indonesia_3000/"
+    echo "  - Log directory: logs_indonesia/finetuned/"
     echo ""
     echo "💡 Troubleshooting tips:"
     echo "  1. Check data directory dan file list"

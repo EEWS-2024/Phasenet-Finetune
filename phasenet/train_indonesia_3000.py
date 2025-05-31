@@ -167,8 +167,6 @@ def load_pretrained_model(sess, pretrained_model_path):
         # Create checkpoint variable name set untuk faster lookup
         checkpoint_var_names = {name for name, shape in checkpoint_vars}
         
-        print(f"\n📋 Variable Loading Analysis:")
-        
         for var in current_vars:
             var_name = var.name.split(':')[0]
             
@@ -197,15 +195,12 @@ def load_pretrained_model(sess, pretrained_model_path):
                     if 'kernel' in var_name or 'weight' in var_name:
                         # Scale down conv/dense weights significantly untuk transfer learning stability
                         scaled_value = checkpoint_value * 0.1  # 10x smaller
-                        print(f"  ✅ LOADED (scaled 0.1x): {var_name} - {var.shape.as_list()}")
                     elif 'bias' in var_name:
                         # Scale down bias terms even more
                         scaled_value = checkpoint_value * 0.01  # 100x smaller
-                        print(f"  ✅ LOADED (scaled 0.01x): {var_name} - {var.shape.as_list()}")
                     else:
                         # Other variables (batch norm gamma, etc.)
                         scaled_value = checkpoint_value * 0.5  # 2x smaller
-                        print(f"  ✅ LOADED (scaled 0.5x): {var_name} - {var.shape.as_list()}")
                     
                     sess.run(var.assign(scaled_value))
                     loaded_count += 1

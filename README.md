@@ -50,9 +50,18 @@ bash run_finetuning_indonesia.sh \
     ../augmentasi-data-phasenet-full/dataset_phasenet_aug/padded_train_list.csv \
     ../augmentasi-data-phasenet-full/dataset_phasenet_aug/npz_padded \
     ../augmentasi-data-phasenet-full/dataset_phasenet_aug/padded_valid_list.csv
+
+# Output: model_indonesia/finetuned/sliding3000_YYMMDD-HHMMSS/
 ```
 
-### **2. Training Parameters (Optimized):**
+### **2. Training From Scratch:**
+```bash
+bash run_training_scratch_indonesia.sh
+
+# Output: model_indonesia/scratch/YYMMDD-HHMMSS/
+```
+
+### **3. Training Parameters:**
 ```bash
 EPOCHS=50                 
 BATCH_SIZE=16             
@@ -62,13 +71,13 @@ DECAY_STEP=10
 DECAY_RATE=0.98           
 ```
 
-### **3. Monitor Training:**
+### **4. Monitor Training:**
 ```bash
 # Check training progress
-tail -f model_indonesia_3000/sliding3000_*/training_history.csv
+tail -f model_indonesia/finetuned/sliding3000_*/training_history.csv
 
 # View loss curves
-eog model_indonesia_3000/sliding3000_*/loss_curves.png
+eog model_indonesia/finetuned/sliding3000_*/loss_curves.png
 ```
 
 ---
@@ -134,6 +143,20 @@ Epoch 4+: Normal decay schedule
 
 ## 📁 **Files & Architecture**
 
+### **Output Directory Structure:**
+```
+model_indonesia/
+├── finetuned/                        # Fine-tuning results (transfer learning)
+│   └── sliding3000_YYMMDD-HHMMSS/    # Timestamped model directories
+├── scratch/                          # Training from scratch results  
+│   └── YYMMDD-HHMMSS/               # Timestamped model directories
+└── resume/                           # Resumed training results (legacy)
+
+logs_indonesia/
+├── finetuned/                        # Fine-tuning logs
+└── scratch/                          # Training from scratch logs
+```
+
 ### **Core Training Files:**
 ```
 phasenet/
@@ -149,12 +172,13 @@ resume_training_indonesia.sh       # Resume training script
 
 ### **Configuration Files:**
 ```
-model_indonesia_3000/sliding3000_YYMMDD-HHMMSS/
-├── config.json                      # Model configuration
-├── training_history.csv             # Loss tracking
-├── loss_curves.png                  # Training plots
-├── model_epoch_*.ckpt               # Checkpoints
-└── final_model.ckpt                 # Final trained model
+model_indonesia/
+├── finetuned/
+│   └── sliding3000_YYMMDD-HHMMSS/
+├── scratch/
+│   └── YYMMDD-HHMMSS/
+└── resume/
+   └── YYMMDD-HHMMSS/
 ```
 
 ---
@@ -176,42 +200,13 @@ Coverage: 99.7% dari original data dengan sliding windows
 
 ### **Sliding Window (3000s) vs Fixed Window (170s):**
 
-| Metric | Sliding 3000s | Fixed 170s | Winner |
-|--------|---------------|------------|--------|
-| **Training Data** | 37,050 windows | 2,053 files | **Sliding** (20x more) |
-| **Transfer Learning** | ✅ NCEDC pretrained | ❌ From scratch | **Sliding** |
-| **Architecture** | Proven & stable | Custom adaptation | **Sliding** |
-| **Training Time** | Longer (more data) | Shorter | Fixed |
-| **Coverage** | Variable per window | 99%+ guaranteed | Fixed |
-| **P-S Compatibility** | Best for <30s | Best for >30s | Depends |
+| Metric | Sliding 3000s | Fixed 170s |
+|--------|---------------|------------|
+| **Training Data** | 37,050 windows | 2,053 files |
+| **Transfer Learning** | ✅ NCEDC pretrained | ❌ From scratch |
+| **Architecture** | Proven & stable | Custom adaptation |
+| **Training Time** | Longer (more data) | Shorter |
+| **Coverage** | Variable per window | 99%+ guaranteed |
+| **P-S Compatibility** | Best for <30s | Best for >30s |
 
 ---
-
-## 📈 **Deployment & Production**
-
-### **1. Model Selection:**
-```bash
-# Find latest trained model
-ls -lt model_indonesia_3000/sliding3000_*/
-
-# Check training history
-cat model_indonesia_3000/sliding3000_*/training_history.csv
-```
-
-### **2. Testing Model:**
-```bash
-python phasenet/test_indonesia.py \
-    --model_dir model_indonesia_3000/sliding3000_YYMMDD-HHMMSS \
-    --test_dir ../augmentasi-data-phasenet-full/dataset_phasenet_aug/npz_padded \
-    --test_list ../augmentasi-data-phasenet-full/dataset_phasenet_aug/padded_valid_list.csv
-```
-
-### **3. Production Inference:**
-```python
-# Load trained model
-model_dir = "model_indonesia_3000/sliding3000_250531-090819"
-
-# Inference on new data
-predictions = model.predict(seismic_data)
-p_picks, s_picks = extract_picks(predictions)
-```
