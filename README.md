@@ -54,12 +54,12 @@ bash run_finetuning_indonesia.sh \
 
 ### **2. Training Parameters (Optimized):**
 ```bash
-EPOCHS=50                   # Fewer epochs (pretrained model)
-BATCH_SIZE=16              # Smaller untuk stability
-LEARNING_RATE=0.00001      # Lower untuk fine-tuning
-DROP_RATE=0.05             # Lower dropout
-DECAY_STEP=10              # Less frequent decay
-DECAY_RATE=0.98            # Gentler decay
+EPOCHS=50                 
+BATCH_SIZE=16             
+LEARNING_RATE=0.00001      
+DROP_RATE=0.05             
+DECAY_STEP=10              
+DECAY_RATE=0.98           
 ```
 
 ### **3. Monitor Training:**
