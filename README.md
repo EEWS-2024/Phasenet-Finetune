@@ -165,22 +165,6 @@ model_indonesia_3000/sliding3000_YYMMDD-HHMMSS/
 
 ---
 
-## 🎛️ **Training Parameters Optimization**
-
-### **Sliding Window Strategy (3000 samples):**
-| Parameter | Value | Reasoning |
-|-----------|-------|-----------|
-| **Window Size** | 3000 samples (30s) | Compatible dengan pretrained model |
-| **Overlap** | 50% (1500 samples) | Data multiplication + diversity |
-| **Batch Size** | 16 | Memory efficient untuk large dataset |
-| **Learning Rate** | 0.00001 | Lower untuk fine-tuning stability |
-| **Dropout** | 0.05 | Lower untuk transfer learning |
-| **Epochs** | 50 | Fewer epochs karena pretrained |
-
-
-
----
-
 ## 📊 **Model Performance & Validation**
 
 ### **Training Data Generation:**
