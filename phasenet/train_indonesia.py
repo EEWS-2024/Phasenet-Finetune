@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Training script untuk PhaseNet Indonesia dengan 99% coverage
-Window size: 135 detik (13,500 samples) untuk menangkap 99% data Indonesia
+Training script untuk PhaseNet Indonesia
 
 CATATAN: Warning TensorFlow tentang 'is_training' placeholder adalah NORMAL dan bisa diabaikan:
 "INVALID_ARGUMENT: You must feed a value for placeholder tensor 'is_training'"
@@ -41,9 +40,9 @@ import datetime
 class Config:
     """Configuration class for model parameters"""
     def __init__(self, **kwargs):
-        # Set default values
-        self.X_shape = [13500, 1, 3]
-        self.Y_shape = [13500, 1, 3]
+        # Set default values untuk 170s window dengan 10s buffers
+        self.X_shape = [17000, 1, 3]
+        self.Y_shape = [17000, 1, 3]
         self.n_channel = 3
         self.n_class = 3
         self.sampling_rate = 100
@@ -82,8 +81,8 @@ def save_config(config, model_dir):
 
 def safe_model_restore(sess, checkpoint_path):
     """
-    Smart transfer learning: load only compatible weights from 30s model to 135s model
-    This is specifically designed for 190703-214543 (30s) -> Indonesia 135s transfer
+    Smart transfer learning: load only compatible weights from 30s model to 170s model
+    This is specifically designed for 190703-214543 (30s) -> Indonesia 170s transfer
     """
     print(f"🧠 Smart Transfer Learning from: {checkpoint_path}")
     print("   Strategy: Load compatible conv layers, reinit incompatible layers")
@@ -512,7 +511,7 @@ def main():
     parser.add_argument('--summary', action='store_true', help='Enable summary')
     
     # Window parameters
-    parser.add_argument('--window_length', type=int, default=13500, help='Window length: 13500 samples (135s)')
+    parser.add_argument('--window_length', type=int, default=17000, help='Window length: 17000 samples (170s)')
     
     args = parser.parse_args()
     
@@ -521,7 +520,7 @@ def main():
     if args.log_dir:
         os.makedirs(args.log_dir, exist_ok=True)
     
-    print("=== KONFIGURASI TRAINING INDONESIA 99% COVERAGE ===")
+    print("=== KONFIGURASI TRAINING INDONESIA===")
     print(f"Window length: {args.window_length} samples ({args.window_length/100:.1f} detik)")
     print(f"Training directory: {args.train_dir}")
     print(f"Training list: {args.train_list}")

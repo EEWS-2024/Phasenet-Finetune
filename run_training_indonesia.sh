@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Script untuk menjalankan training PhaseNet Indonesia 
-# Window size: 135 detik (13,500 samples) untuk menangkap 
 
 echo "=================================================="
 echo "🚀 TRAINING PHASENET INDONESIA FROM SCRATCH"
@@ -13,11 +12,11 @@ OUTPUT_MODEL_DIR="model_indonesia/scratch"
 
 # Training parameters optimized untuk Indonesia
 EPOCHS=3
-BATCH_SIZE=128                    # Reduced untuk very large windows (13,500 samples)
-LEARNING_RATE=0.00003          # Reduced significantly to prevent gradient explosion
-DROP_RATE=0.15                 # Higher dropout untuk regularization
+BATCH_SIZE=64                    
+LEARNING_RATE=0.000025         
+DROP_RATE=0.15                
 WEIGHT_DECAY=0.0001           # L2 regularization
-SAVE_INTERVAL=10              # Save checkpoint every 10 epochs
+SAVE_INTERVAL=10             
 
 # Testing parameters
 MIN_PROB=0.05                # Minimum probability threshold for detection (lower = more sensitive)
@@ -27,9 +26,10 @@ echo "   Dataset: $DATASET_DIR"
 echo "   Output model: $OUTPUT_MODEL_DIR"
 echo "   Epochs: $EPOCHS"
 echo "   Batch size: $BATCH_SIZE"
-echo "   Learning rate: $LEARNING_RATE (optimized)"
+echo "   Learning rate: $LEARNING_RATE (optimized for 170s windows)"
 echo "   Dropout rate: $DROP_RATE"
 echo "   Weight decay: $WEIGHT_DECAY"
+echo "   Window size: 170 seconds (17,000 samples) with 10s buffers"
 echo "   Testing min prob: $MIN_PROB"
 echo "=================================================="
 
@@ -109,9 +109,9 @@ if [ $? -eq 0 ]; then
     echo "=== TRAINING FROM SCRATCH SUMMARY ==="
     echo "Training type: From scratch (random weights)"
     echo "Data: Indonesia"
-    echo "Window size: 13500 samples (135 seconds)"
+    echo "Window size: 170 seconds (17,000 samples) with 10s buffers"
     echo "Batch size: $BATCH_SIZE"
-    echo "Learning rate: $LEARNING_RATE (optimized)"
+    echo "Learning rate: $LEARNING_RATE (optimized for 170s windows)"
     echo "Total epochs: $EPOCHS"
     echo "Output model: ../$OUTPUT_MODEL_DIR/$LATEST_MODEL"
     echo "Test results: ../$OUTPUT_MODEL_DIR/$LATEST_MODEL/test_results"

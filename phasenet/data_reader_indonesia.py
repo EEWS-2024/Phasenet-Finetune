@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 Data Reader khusus untuk dataset Indonesi
-Window size: 135 detik (13,500 samples) untuk menangkap data Indonesia
 """
 
 import tensorflow as tf
@@ -16,12 +15,12 @@ import os
 class DataConfig_Indonesia(DataConfig):
     """Konfigurasi khusus untuk data Indonesia"""
     
-    # Berdasarkan analisis data Indonesia untuk 99% coverage
+    # Berdasarkan analisis data Indonesia
     sampling_rate = 100
     dt = 1.0 / sampling_rate
     
-    # Window size untuk 99% coverage: 135 detik (13,500 samples)
-    window_length = 13500  # 135 detik pada 100 Hz
+    # Window size: 170 detik (17,000 samples)
+    window_length = 17000  # 170 detik pada 100 Hz
     
     # Input/Output shape disesuaikan
     X_shape = [window_length, 1, 3]
@@ -54,16 +53,15 @@ class DataReader_Indonesia_Train(DataReader):
         self.buffer_channels = {}
         self.window_length = config.window_length
         
-        # Shift range disesuaikan untuk window yang sangat besar
+        # Shift range disesuaikan untuk window yang sangat besar dengan buffer
         self.shift_range = [-2000 + self.label_width * 2, 1000 - self.label_width * 2]
         
-        # Select range untuk window extraction
-        self.select_range = [3000, 3000 + self.window_length]
+        # Select range untuk window extraction - dengan buffer optimal
+        self.select_range = [2000, 2000 + self.window_length]  # Start earlier untuk buffer
         
-        print(f"Indonesia 99% Coverage DataReader initialized:")
+        print(f"Indonesia DataReader initialized:")
         print(f"  Window length: {self.window_length} samples ({self.window_length/100:.1f} seconds)")
         print(f"  Select range: {self.select_range}")
-        print(f"  Coverage target: 99% data Indonesia")
 
     def __getitem__(self, i):
         base_name = str(self.data_list.iloc[i]).split("/")[-1]
@@ -98,21 +96,40 @@ class DataReader_Indonesia_Train(DataReader):
             s_idx = npz_data['s_idx'][0][0] if len(npz_data['s_idx']) > 0 and len(npz_data['s_idx'][0]) > 0 else 6000
             
             # Ensure indices are within bounds
-            p_idx = max(3000, min(p_idx, sample.shape[0] - self.window_length))
-            s_idx = max(3000, min(s_idx, sample.shape[0] - self.window_length))
+            p_idx = max(1000, min(p_idx, sample.shape[0] - self.window_length))  # Allow earlier start
+            s_idx = max(1000, min(s_idx, sample.shape[0] - self.window_length))
             
-            # Adaptive windowing strategy for 99% coverage
+            # Improved windowing strategy with optimal buffers
+            # Target: 10s buffer before P + P-S interval + 10s buffer after S
+            BUFFER_BEFORE_P = 1000   # 10 detik sebelum P
+            BUFFER_AFTER_S = 1000    # 10 detik sesudah S
+            
             ps_interval = s_idx - p_idx
             
-            if ps_interval <= 5000:  # P-S < 50 seconds
-                # Center window on P-S pair
-                center = (p_idx + s_idx) // 2
-                start_idx = max(3000, center - self.window_length // 2)
-            else:  # P-S > 50 seconds
-                # Start window from P-5s to capture full P-S sequence
-                start_idx = max(3000, p_idx - 500)
+            # Strategy: Always ensure buffer before P and after S
+            # Start window 10 seconds before P-wave
+            start_idx = p_idx - BUFFER_BEFORE_P
+            
+            # Check if S-wave + buffer fits within window
+            s_wave_end_with_buffer = s_idx + BUFFER_AFTER_S
+            window_end = start_idx + self.window_length
+            
+            if s_wave_end_with_buffer > window_end:
+                # S-wave + buffer doesn't fit, adjust strategy
+                if ps_interval <= 15000:  # P-S ≤ 150 seconds, try to fit both with buffers
+                    # Center window pada P-S interval dengan buffer
+                    center = (p_idx + s_idx) // 2
+                    start_idx = center - self.window_length // 2
+                    
+                    # Ensure minimum buffer before P
+                    if (p_idx - start_idx) < BUFFER_BEFORE_P:
+                        start_idx = p_idx - BUFFER_BEFORE_P
+                else:
+                    # Very long P-S interval, prioritize P-wave dengan buffer
+                    start_idx = p_idx - BUFFER_BEFORE_P
             
             # Ensure we don't exceed data bounds
+            start_idx = max(0, start_idx)
             start_idx = min(start_idx, sample.shape[0] - self.window_length)
             end_idx = start_idx + self.window_length
             
@@ -194,9 +211,9 @@ class DataReader_Indonesia_Test(DataReader):
         super().__init__(format=format, config=config, **kwargs)
         
         self.window_length = config.window_length
-        self.select_range = [3000, 3000 + self.window_length]
+        self.select_range = [2000, 2000 + self.window_length]  # Start earlier untuk buffer
         
-        print(f"Indonesia 99% Test DataReader initialized:")
+        print(f"Indonesia DataReader initialized:")
         print(f"  Window length: {self.window_length} samples ({self.window_length/100:.1f} seconds)")
 
     def __getitem__(self, i):
@@ -231,18 +248,40 @@ class DataReader_Indonesia_Test(DataReader):
             s_idx = npz_data['s_idx'][0][0] if len(npz_data['s_idx']) > 0 and len(npz_data['s_idx'][0]) > 0 else 6000
             
             # Ensure indices are within bounds
-            p_idx = max(3000, min(p_idx, sample.shape[0] - self.window_length))
-            s_idx = max(3000, min(s_idx, sample.shape[0] - self.window_length))
+            p_idx = max(1000, min(p_idx, sample.shape[0] - self.window_length))  # Allow earlier start
+            s_idx = max(1000, min(s_idx, sample.shape[0] - self.window_length))
             
-            # Same adaptive windowing as training
+            # Improved windowing strategy with optimal buffers
+            # Target: 10s buffer before P + P-S interval + 10s buffer after S
+            BUFFER_BEFORE_P = 1000   # 10 detik sebelum P
+            BUFFER_AFTER_S = 1000    # 10 detik sesudah S
+            
             ps_interval = s_idx - p_idx
             
-            if ps_interval <= 5000:  # P-S < 50 seconds
-                center = (p_idx + s_idx) // 2
-                start_idx = max(3000, center - self.window_length // 2)
-            else:  # P-S > 50 seconds
-                start_idx = max(3000, p_idx - 500)
+            # Strategy: Always ensure buffer before P and after S
+            # Start window 10 seconds before P-wave
+            start_idx = p_idx - BUFFER_BEFORE_P
             
+            # Check if S-wave + buffer fits within window
+            s_wave_end_with_buffer = s_idx + BUFFER_AFTER_S
+            window_end = start_idx + self.window_length
+            
+            if s_wave_end_with_buffer > window_end:
+                # S-wave + buffer doesn't fit, adjust strategy
+                if ps_interval <= 15000:  # P-S ≤ 150 seconds, try to fit both with buffers
+                    # Center window pada P-S interval dengan buffer
+                    center = (p_idx + s_idx) // 2
+                    start_idx = center - self.window_length // 2
+                    
+                    # Ensure minimum buffer before P
+                    if (p_idx - start_idx) < BUFFER_BEFORE_P:
+                        start_idx = p_idx - BUFFER_BEFORE_P
+                else:
+                    # Very long P-S interval, prioritize P-wave dengan buffer
+                    start_idx = p_idx - BUFFER_BEFORE_P
+            
+            # Ensure we don't exceed data bounds
+            start_idx = max(0, start_idx)
             start_idx = min(start_idx, sample.shape[0] - self.window_length)
             end_idx = start_idx + self.window_length
             

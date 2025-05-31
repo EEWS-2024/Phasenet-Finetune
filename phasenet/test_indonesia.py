@@ -67,7 +67,7 @@ def find_latest_model_dir(base_model_dir):
     return os.path.join(base_model_dir, subdirs[0])
 
 def test_fn(args, data_reader):
-    """Test function for Indonesia 99% coverage model"""
+    """Test function for Indonesia model"""
     
     # Determine model directory to use
     if args.model_path:
@@ -432,7 +432,7 @@ def main():
     parser.add_argument('--min_prob', type=float, default=0.1, help='Minimum probability threshold for peak detection (default: 0.1)')
     
     # Window parameters
-    parser.add_argument('--window_length', type=int, default=13500, help='Window length: 13500 samples (135s)')
+    parser.add_argument('--window_length', type=int, default=17000, help='Window length: 17000 samples (170s)')
     
     args = parser.parse_args()
     

@@ -60,10 +60,10 @@ fi
 
 OUTPUT_MODEL_DIR="model_indonesia/resume"
 
-# Training parameters - SAFE SETTINGS THAT WORK
-EPOCHS=2                    # Continue training
-BATCH_SIZE=8                 # SAFE batch size untuk 13,500 samples
-LEARNING_RATE=0.000015       # Even LOWER learning rate untuk resume (half of 3e-5)
+# Training parameters
+EPOCHS=2                    
+BATCH_SIZE=4               
+LEARNING_RATE=0.00001      
 DROP_RATE=0.15               # Standard dropout rate
 WEIGHT_DECAY=0.0001          # Standard weight decay
 SAVE_INTERVAL=5              # Save every 5 epochs
@@ -77,8 +77,8 @@ echo "   Dataset: $DATASET_DIR"
 echo "   Base model directory: $PRETRAINED_MODEL_DIR"
 echo "   Output model: $OUTPUT_MODEL_DIR"
 echo "   Epochs: $EPOCHS"
-echo "   Batch size: $BATCH_SIZE (SAFE)"
-echo "   Learning rate: $LEARNING_RATE (VERY LOW for stability)"
+echo "   Batch size: $BATCH_SIZE"
+echo "   Learning rate: $LEARNING_RATE"
 echo "   Dropout rate: $DROP_RATE"
 echo "   Weight decay: $WEIGHT_DECAY"
 echo "   Testing min prob: $MIN_PROB"
@@ -179,9 +179,8 @@ if [ $? -eq 0 ]; then
     fi
     echo "Base model directory: $PRETRAINED_MODEL_DIR"
     echo "Resume untuk: Extended training Indonesia"
-    echo "Window size: 13500 samples (135 seconds)"
-    echo "Batch size: $BATCH_SIZE (SAFE)"
-    echo "Learning rate: $LEARNING_RATE (VERY LOW untuk stability)"
+    echo "Batch size: $BATCH_SIZE"
+    echo "Learning rate: $LEARNING_RATE"
     echo "Total epochs: $EPOCHS"
     echo "Output model: ../$OUTPUT_MODEL_DIR/$LATEST_MODEL"
     echo "Test results: ../$OUTPUT_MODEL_DIR/$LATEST_MODEL/test_results"
