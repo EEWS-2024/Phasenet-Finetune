@@ -1,4 +1,4 @@
-# PhaseNet Indonesia - Complete Training & Fine-tuning Guide
+# PhaseNet Indonesia
 
 Repository ini adalah adaptasi dari [PhaseNet](https://github.com/AI4EPS/PhaseNet) yang telah dioptimalkan untuk dataset gempa Indonesia menggunakan **sliding window strategy** dan **transfer learning** dari model pretrained NCEDC dataset.
 
