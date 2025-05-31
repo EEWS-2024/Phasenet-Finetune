@@ -27,13 +27,16 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend untuk server
 
 # Add phasenet to path
 sys.path.append(os.path.dirname(__file__))
 
 from model import ModelConfig, UNet
 from data_reader_indonesia import DataConfig_Indonesia, DataReader_Indonesia_Train
-import pandas as pd
 import json
 import datetime
 
@@ -78,6 +81,125 @@ def save_config(config, model_dir):
     with open(config_file, 'w') as f:
         json.dump(config_dict, f, indent=2)
     print(f"Configuration saved to: {config_file}")
+
+def save_loss_history(train_losses, val_losses, model_dir):
+    """Save training and validation loss history to CSV file"""
+    # Create DataFrame with loss history
+    max_epochs = max(len(train_losses), len(val_losses))
+    
+    # Pad shorter list with None
+    train_padded = train_losses + [None] * (max_epochs - len(train_losses))
+    val_padded = val_losses + [None] * (max_epochs - len(val_losses))
+    
+    loss_df = pd.DataFrame({
+        'epoch': range(1, max_epochs + 1),
+        'train_loss': train_padded,
+        'val_loss': val_padded
+    })
+    
+    # Save to CSV
+    csv_path = os.path.join(model_dir, 'training_history.csv')
+    loss_df.to_csv(csv_path, index=False)
+    print(f"📊 Training history saved to: {csv_path}")
+    
+    return loss_df
+
+def plot_loss_curves(train_losses, val_losses, model_dir):
+    """Create and save training/validation loss curves plot"""
+    
+    plt.figure(figsize=(12, 8))
+    
+    epochs = range(1, len(train_losses) + 1)
+    
+    # Plot training loss
+    plt.subplot(2, 1, 1)
+    plt.plot(epochs, train_losses, 'bo-', label='Training Loss', linewidth=2, markersize=4)
+    plt.title('Training Loss over Epochs', fontsize=14, fontweight='bold')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    
+    # Plot both losses together if validation exists
+    plt.subplot(2, 1, 2)
+    plt.plot(epochs, train_losses, 'bo-', label='Training Loss', linewidth=2, markersize=4)
+    
+    if val_losses and len(val_losses) > 0:
+        val_epochs = range(1, len(val_losses) + 1)
+        plt.plot(val_epochs, val_losses, 'ro-', label='Validation Loss', linewidth=2, markersize=4)
+    
+    plt.title('Training vs Validation Loss', fontsize=14, fontweight='bold')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    
+    # Adjust layout
+    plt.tight_layout()
+    
+    # Save plot
+    plot_path = os.path.join(model_dir, 'loss_curves.png')
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"📈 Loss curves plot saved to: {plot_path}")
+    
+    # Also save as PDF for high quality
+    plot_path_pdf = os.path.join(model_dir, 'loss_curves.pdf')
+    plt.figure(figsize=(12, 8))
+    
+    plt.subplot(2, 1, 1)
+    plt.plot(epochs, train_losses, 'bo-', label='Training Loss', linewidth=2, markersize=4)
+    plt.title('Training Loss over Epochs', fontsize=14, fontweight='bold')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    
+    plt.subplot(2, 1, 2)
+    plt.plot(epochs, train_losses, 'bo-', label='Training Loss', linewidth=2, markersize=4)
+    
+    if val_losses and len(val_losses) > 0:
+        val_epochs = range(1, len(val_losses) + 1)
+        plt.plot(val_epochs, val_losses, 'ro-', label='Validation Loss', linewidth=2, markersize=4)
+    
+    plt.title('Training vs Validation Loss', fontsize=14, fontweight='bold')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.savefig(plot_path_pdf, format='pdf', bbox_inches='tight')
+    plt.close()
+    
+    print(f"📈 Loss curves plot (PDF) saved to: {plot_path_pdf}")
+
+def print_loss_summary(train_losses, val_losses):
+    """Print summary statistics of training"""
+    print(f"\n📊 === TRAINING SUMMARY ===")
+    
+    if train_losses:
+        print(f"Training Loss:")
+        print(f"  Initial: {train_losses[0]:.6f}")
+        print(f"  Final: {train_losses[-1]:.6f}")
+        print(f"  Best: {min(train_losses):.6f} (epoch {train_losses.index(min(train_losses)) + 1})")
+        print(f"  Improvement: {((train_losses[0] - train_losses[-1]) / train_losses[0] * 100):.2f}%")
+    
+    if val_losses:
+        print(f"Validation Loss:")
+        print(f"  Initial: {val_losses[0]:.6f}")
+        print(f"  Final: {val_losses[-1]:.6f}")
+        print(f"  Best: {min(val_losses):.6f} (epoch {val_losses.index(min(val_losses)) + 1})")
+        print(f"  Improvement: {((val_losses[0] - val_losses[-1]) / val_losses[0] * 100):.2f}%")
+        
+        # Check for overfitting
+        if len(val_losses) >= 5:
+            recent_val = val_losses[-5:]
+            if all(recent_val[i] >= recent_val[i-1] for i in range(1, len(recent_val))):
+                print(f"  ⚠️  Warning: Validation loss increasing in last 5 epochs (possible overfitting)")
+    
+    print(f"=" * 40)
 
 def safe_model_restore(sess, checkpoint_path):
     """
@@ -366,6 +488,10 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
         print(f"Learning rate: {args.learning_rate}")
         print(f"Window size: {data_reader_train.config.window_length} samples ({data_reader_train.config.window_length/100:.1f}s)")
         
+        # Initialize loss tracking
+        epoch_train_losses = []
+        epoch_val_losses = []
+        
         for epoch in range(args.epochs):
             print(f"\n=== Epoch {epoch + 1}/{args.epochs} ===")
             
@@ -416,8 +542,10 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
             except tf.errors.OutOfRangeError:
                 if len(train_losses) > 0:
                     avg_train_loss = np.mean(train_losses)
+                    epoch_train_losses.append(avg_train_loss)
                     print(f"  Average Training Loss: {avg_train_loss:.6f}")
                 else:
+                    epoch_train_losses.append(float('nan'))
                     print(f"  Average Training Loss: No valid batches processed")
             
             # Validation phase with fresh data
@@ -462,8 +590,10 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
                 
                 if len(valid_losses) > 0:
                     avg_valid_loss = np.mean(valid_losses)
+                    epoch_val_losses.append(avg_valid_loss)
                     print(f"  Average Validation Loss: {avg_valid_loss:.6f} ({len(valid_losses)} batches)")
                 else:
+                    epoch_val_losses.append(float('nan'))
                     print(f"  Average Validation Loss: No valid validation batches")
             else:
                 print(f"  No validation data provided")
@@ -478,6 +608,23 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
         final_model_path = os.path.join(model_dir, "final_model.ckpt")
         saver.save(sess, final_model_path)
         print(f"\nFinal model saved: {final_model_path}")
+        
+        # Save loss history and create plots
+        print(f"\n📊 Saving training history and plots...")
+        
+        # Clean NaN values for plotting
+        clean_train_losses = [x for x in epoch_train_losses if not np.isnan(x)]
+        clean_val_losses = [x for x in epoch_val_losses if not np.isnan(x)]
+        
+        # Save CSV file
+        save_loss_history(epoch_train_losses, epoch_val_losses, model_dir)
+        
+        # Create and save plots
+        if clean_train_losses:
+            plot_loss_curves(clean_train_losses, clean_val_losses, model_dir)
+        
+        # Print training summary
+        print_loss_summary(clean_train_losses, clean_val_losses)
         
         return model_dir
 
