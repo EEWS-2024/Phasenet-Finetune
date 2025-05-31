@@ -1,7 +1,11 @@
 #!/bin/bash
 
-# Script untuk melanjutkan training PhaseNet Indonesia dengan 99% coverage
+# Script untuk melanjutkan training PhaseNet Indonesia
 # Resume dari model scratch yang sudah berhasil
+# 
+# Usage:
+#   bash resume_training_indonesia.sh                    # Use latest model automatically
+#   bash resume_training_indonesia.sh model_folder_name  # Use specific model folder
 
 echo "=================================================="
 echo "🔄 RESUME TRAINING PHASENET INDONESIA"
@@ -9,13 +13,55 @@ echo "=================================================="
 
 # Configuration
 DATASET_DIR="dataset_phasenet_aug"
-# Use latest successful scratch model instead of incompatible pretrained
-LATEST_SCRATCH_MODEL=$(ls -t model_indonesia/scratch/ | head -n 1)
-PRETRAINED_MODEL_DIR="model_indonesia/scratch/$LATEST_SCRATCH_MODEL"
+
+# Check if specific model folder is provided as argument
+if [ $# -eq 1 ]; then
+    # Use user-specified model folder
+    SPECIFIED_MODEL_FOLDER="$1"
+    PRETRAINED_MODEL_DIR="model_indonesia/scratch/$SPECIFIED_MODEL_FOLDER"
+    
+    # Verify that the specified model exists
+    if [ ! -d "$PRETRAINED_MODEL_DIR" ]; then
+        echo "❌ Specified model directory not found: $PRETRAINED_MODEL_DIR"
+        echo ""
+        echo "Available models in model_indonesia/scratch/:"
+        if [ -d "model_indonesia/scratch" ]; then
+            ls -la model_indonesia/scratch/
+        else
+            echo "   (no models found)"
+        fi
+        echo ""
+        echo "Usage:"
+        echo "   bash resume_training_indonesia.sh                    # Use latest model automatically"
+        echo "   bash resume_training_indonesia.sh model_folder_name  # Use specific model folder"
+        exit 1
+    fi
+    
+    echo "🎯 Using SPECIFIED model: $SPECIFIED_MODEL_FOLDER"
+else
+    # Use latest model automatically (original behavior)
+    if [ ! -d "model_indonesia/scratch" ]; then
+        echo "❌ No scratch models directory found: model_indonesia/scratch"
+        echo "Please run training from scratch first using: bash run_training_indonesia.sh"
+        exit 1
+    fi
+    
+    LATEST_SCRATCH_MODEL=$(ls -t model_indonesia/scratch/ | head -n 1)
+    
+    if [ -z "$LATEST_SCRATCH_MODEL" ]; then
+        echo "❌ No models found in model_indonesia/scratch/"
+        echo "Please run training from scratch first using: bash run_training_indonesia.sh"
+        exit 1
+    fi
+    
+    PRETRAINED_MODEL_DIR="model_indonesia/scratch/$LATEST_SCRATCH_MODEL"
+    echo "🎯 Using LATEST model automatically: $LATEST_SCRATCH_MODEL"
+fi
+
 OUTPUT_MODEL_DIR="model_indonesia/resume"
 
 # Training parameters - SAFE SETTINGS THAT WORK
-EPOCHS=20                    # Continue training
+EPOCHS=2                    # Continue training
 BATCH_SIZE=8                 # SAFE batch size untuk 13,500 samples
 LEARNING_RATE=0.000015       # Even LOWER learning rate untuk resume (half of 3e-5)
 DROP_RATE=0.15               # Standard dropout rate
@@ -25,10 +71,10 @@ SAVE_INTERVAL=5              # Save every 5 epochs
 # Testing parameters
 MIN_PROB=0.05                # Minimum probability threshold for detection
 
+echo ""
 echo "🎯 Configuration:"
 echo "   Dataset: $DATASET_DIR"
-echo "   Latest scratch model: $LATEST_SCRATCH_MODEL"
-echo "   Pre-trained model: $PRETRAINED_MODEL_DIR"
+echo "   Base model directory: $PRETRAINED_MODEL_DIR"
 echo "   Output model: $OUTPUT_MODEL_DIR"
 echo "   Epochs: $EPOCHS"
 echo "   Batch size: $BATCH_SIZE (SAFE)"
@@ -38,11 +84,15 @@ echo "   Weight decay: $WEIGHT_DECAY"
 echo "   Testing min prob: $MIN_PROB"
 echo "=================================================="
 
-# Check if latest scratch model exists
+# Check if base model exists
 if [ ! -d "$PRETRAINED_MODEL_DIR" ]; then
-    echo "❌ Latest scratch model directory not found: $PRETRAINED_MODEL_DIR"
+    echo "❌ Base model directory not found: $PRETRAINED_MODEL_DIR"
     echo "Available models:"
-    ls -la model_indonesia/scratch/
+    if [ -d "model_indonesia/scratch" ]; then
+        ls -la model_indonesia/scratch/
+    else
+        echo "   (no models found)"
+    fi
     exit 1
 fi
 
@@ -122,8 +172,12 @@ if [ $? -eq 0 ]; then
     
     echo ""
     echo "=== RESUME TRAINING SUMMARY ==="
-    echo "Training type: Resume (from successful scratch model)"
-    echo "Base model: $LATEST_SCRATCH_MODEL"
+    if [ $# -eq 1 ]; then
+        echo "Training type: Resume (from specified model: $SPECIFIED_MODEL_FOLDER)"
+    else
+        echo "Training type: Resume (from latest model: $LATEST_SCRATCH_MODEL)"
+    fi
+    echo "Base model directory: $PRETRAINED_MODEL_DIR"
     echo "Resume untuk: Extended training Indonesia"
     echo "Window size: 13500 samples (135 seconds)"
     echo "Batch size: $BATCH_SIZE (SAFE)"
@@ -134,7 +188,7 @@ if [ $? -eq 0 ]; then
     echo "========================="
 else
     echo ""
-    echo "❌ TRAINING FAILED!"
+    echo "ERROR: TRAINING FAILED!"
     echo "Check the error messages above for details."
     exit 1
 fi 
