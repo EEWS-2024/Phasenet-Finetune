@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Testing script untuk PhaseNet Indonesia dengan 99% coverage
-Window size: 135 detik (13,500 samples) untuk menangkap 99% data Indonesia
+Testing script untuk PhaseNet Indonesia
+Window size: 135 detik (13,500 samples) untuk menangkap
 
 CATATAN: Warning TensorFlow tentang 'is_training' placeholder adalah NORMAL dan bisa diabaikan:
 "INVALID_ARGUMENT: You must feed a value for placeholder tensor 'is_training'"

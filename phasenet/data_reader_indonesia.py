@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Data Reader khusus untuk dataset Indonesia dengan 99% coverage
-Window size: 135 detik (13,500 samples) untuk menangkap 99% data Indonesia
+Data Reader khusus untuk dataset Indonesi
+Window size: 135 detik (13,500 samples) untuk menangkap data Indonesia
 """
 
 import tensorflow as tf
@@ -14,7 +14,7 @@ from data_reader import DataReader, DataConfig, normalize_long
 import os
 
 class DataConfig_Indonesia(DataConfig):
-    """Konfigurasi khusus untuk data Indonesia dengan 99% coverage"""
+    """Konfigurasi khusus untuk data Indonesia"""
     
     # Berdasarkan analisis data Indonesia untuk 99% coverage
     sampling_rate = 100
