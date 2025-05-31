@@ -6,7 +6,7 @@ Repository ini adalah adaptasi dari [PhaseNet](https://github.com/AI4EPS/PhaseNe
 
 PhaseNet Indonesia menggunakan **dua strategi windowing** yang telah dioptimalkan untuk karakteristik seismik Indonesia:
 
-1. **🔄 Sliding Window 3000 samples (30s)** - **RECOMMENDED**
+1. **🔄 Sliding Window 3000 samples (30s)**
    - Compatible dengan model pretrained PhaseNet
    - Transfer learning dari NCEDC dataset
 
