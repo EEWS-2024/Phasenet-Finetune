@@ -1,218 +1,240 @@
-# PhaseNet Indonesia - Complete Fine-tuning Guide
+# PhaseNet Indonesia - Complete Training & Fine-tuning Guide
 
-- Repository ini adalah fork dari [PhaseNet](https://github.com/AI4EPS/PhaseNet) yang telah diubah untuk menyesuaikan dengan dataset gempa Indonesia.
+Repository ini adalah adaptasi dari [PhaseNet](https://github.com/AI4EPS/PhaseNet) yang telah dioptimalkan untuk dataset gempa Indonesia menggunakan **sliding window strategy** dan **transfer learning** dari model pretrained STEAD dataset.
 
-Panduan lengkap untuk fine-tuning PhaseNet menggunakan dataset gempa Indonesia. Dokumentasi ini menjelaskan seluruh proses dari persiapan data hingga training model dengan window size yang dioptimalkan untuk karakteristik seismik Indonesia.
+## 🎯 **Overview**
 
-## **Data Yang Digunakan**
+PhaseNet Indonesia menggunakan **dua strategi windowing** yang telah dioptimalkan untuk karakteristik seismik Indonesia:
 
-- **Dataset**: Dataset gempa Indonesia yang sudah dipreprocess dan di-padding sehingga semuanya memiliki panjang yang sama (untuk NPZ)
-- **NPZ**: Dataset disimpan dalam format `.npz`, yang merupakan format kompresi dari NumPy dan memuat beberapa array sekaligus. Dataset ini berada dalam direktori:
+1. **🔄 Sliding Window 3000 samples (30s)** - **RECOMMENDED**
+   - Compatible dengan model pretrained PhaseNet
+   - Transfer learning dari STEAD dataset
 
-  ```
-  dataset_phasenet_aug/npz_padded/
-  ```
-
-  * Setiap file mewakili satu event seismik dari satu stasiun.
-  * Nama file tidak secara langsung mencerminkan tanggal atau lokasi, namun informasi tersebut dapat diperoleh dari atribut `t0` dan `station_id`.
-
-  * Setiap file `.npz` berisi beberapa *key* dengan deskripsi sebagai berikut:
-
-    | Key                | Tipe Data         | Bentuk     | Deskripsi                                                                              |
-    | ------------------ | ----------------- | ---------- | -------------------------------------------------------------------------------------- |
-    | `data`             | `float64 ndarray` | (30085, 3) | Data waveform seismik ter-*padding* untuk 3 channel: E (East), N (North), Z (Vertical) |
-    | `p_idx`            | `int64 ndarray`   | (1, 1)     | Indeks waktu kedatangan gelombang **P**                                                |
-    | `s_idx`            | `int64 ndarray`   | (1, 1)     | Indeks waktu kedatangan gelombang **S**                                                |
-    | `station_id`       | `str`             | ()         | ID stasiun seismik, misalnya `'BBJI'`                                                  |
-    | `t0`               | `str`             | ()         | Timestamp awal rekaman dalam format ISO, misalnya `'2017-02-13T08:12:33.369'`          |
-    | `channel`          | `str ndarray`     | (3,)       | Nama channel yang digunakan, misalnya `['BHE', 'BHN', 'BHZ']`                          |
-    | `channel_type`     | `str ndarray`     | (3,)       | Jenis channel berdasarkan orientasi: E, N, Z                                           |
-    | `is_augmented`     | `bool ndarray`    | (1,)       | Apakah data ini merupakan hasil augmentasi                                             |
-    | `original_channel` | `str ndarray`     | (3,)       | Nama channel asli sebelum augmentasi (jika ada)                                        |
-  
-  * Alasan semua data di-padding adalah karena PhaseNet membutuhkan data dengan panjang yang sama untuk training, sehingga kami memilih untuk membuat semua data memiliki panjang yang sama dengan cara padding, namun ketika masih dalam file mseed datanya sudah memiliki panjang yang mirip sehingga paddingnya tidak terlalu besar (hanya 10 samples saja).
-
-- **CSV**: Daftar file untuk training/validation, berada di direktori `dataset_phasenet_aug/padded_train_list.csv` dan `dataset_phasenet_aug/padded_valid_list.csv`
-  - **Format**: `dataset_phasenet_aug/padded_train_list.csv`
-  - **Format**: `dataset_phasenet_aug/padded_valid_list.csv`
-* **mseed**: Ini adalah data asli sebelum dikonversi ke format `.npz`, disimpan dalam direktori:
-
-  ```
-  dataset_phasenet_aug/waveform/
-  ```
-
-  * Setiap file `.mseed` mewakili satu event seismik dari satu stasiun, sehingga akan berisi **3 trace**: komponen **E (East)**, **N (North)**, dan **Z (Vertical)**.
-  * Data **tidak di-*padding***, sehingga panjang setiap file **berbeda-beda**:
-
-    * Panjang maksimum: **30086 samples**
-    * Panjang minimum: **30076 samples**
-  * **Sampling rate** dari semua data telah di-*interpolate* menggunakan *linear interpolation* menjadi **100 Hz**, untuk menyesuaikan dengan kebutuhan PhaseNet (data asli dari gempa Indonesia hanya memiliki sampling rate 20 Hz).
-  * Channel gempa yang digunakan **tidak terbatas pada BH\*** saja, tetapi juga mencakup:
-
-    * **BL\***, **SH\***, **HL\***, **HH\***, dan **SL\***.
-    * Pemilihan ini dilakukan dengan syarat channel memiliki **3 komponen (E, N, Z)** dan **sampling rate minimal 20 Hz**.
-  * Alasan penggunaan channel yang bervariasi:
-
-    * **PhaseNet** dilatih dengan berbagai jenis channel, sehingga model dapat menangani data dengan variasi channel yang luas.
-    * Jika hanya menggunakan channel **BH\***, jumlah data sangat terbatas (**sekitar 600 file saja**), yang tidak cukup untuk pelatihan yang efektif.
-  * Untuk data dari channel selain BH\*:
-
-    * Walaupun hanya channel BH\* yang memiliki anotasi manual untuk **P dan S picks** dari GEOFON,
-    * Kami melakukan **anotasi otomatis** pada channel lainnya dengan cara:
-
-      * Mengambil waktu arrival **P dan S** dari channel **BH\***.
-      * Menerapkan waktu yang sama pada channel lain (BL\*, HL\*, dst) dalam event dan stasiun yang sama.
-      * Proses ini dilakukan karena umumnya tidak ada perbedaan waktu yang signifikan antar channel dalam satu stasiun yang sama.
+2. **📏 Fixed Window 170s** - Legacy approach
+   - Custom architecture untuk data Indonesia
 
 ---
 
+## 📊 **Dataset Indonesia**
 
-## **ANALISIS DATA INDONESIA**
+### **Format Data:**
+- **NPZ Files**: `dataset_phasenet_aug/npz_padded/`
+- **Training List**: `dataset_phasenet_aug/padded_train_list.csv`
+- **Validation List**: `dataset_phasenet_aug/padded_valid_list.csv`
 
-Berdasarkan analisis 2,053 file NPZ dataset Indonesia:
+### **Struktur NPZ File:**
+| Key | Type | Shape | Description |
+|-----|------|-------|-------------|
+| `data` | `float64` | (30085, 3) | Waveform data (E, N, Z channels) |
+| `p_idx` | `int64` | (1, 1) | P-wave arrival index |
+| `s_idx` | `int64` | (1, 1) | S-wave arrival index |
+| `station_id` | `str` | () | Station ID (e.g., 'BBJI') |
+| `t0` | `str` | () | Start timestamp |
+| `channel` | `str array` | (3,) | Channel names |
 
 ### **Statistik P-S Interval:**
+- **Mean**: 36.0 detik
+- **Median**: 29.8 detik  
+- **P99**: 117.1 detik
+- **Maximum**: 240.8 detik
+- **Total Files**: 2,053 NPZ files
 
-- P-S interval di sini maksudnya adalah interval waktu antara gelombang P dan S.
-- **Mean**: 36.0 detik (3,599 samples)
-- **Median**: 29.8 detik (2,976 samples)
-- **99th percentile**: 117.1 detik (11,707 samples) ⭐
-- **Maximum**: 240.8 detik (24,081 samples)
+---
 
-### **Distribusi Data:**
+## 🚀 **Sliding Window Strategy**
 
-- Sangat Pendek (< 20s): 30.2% (620 file)
-- Pendek (20-40s): 37.0% (760 file)
-- Sedang (40-60s): 18.7% (384 file)
-- Panjang (60-120s): 13.1% (269 file)
-- Sangat Panjang (> 120s): 1.0% (20 file)
-
-### **Permasalahan yang muncul saat training:**
-
-- PhaseNet original dilatih hanya dengan window **3000 samples (30 detik)**, namun data gempa Indonesia memiliki P-S interval yang jauh lebih panjang.
-- **Coverage Original PhaseNet**: Hanya ~70% data Indonesia yang dapat dideteksi dengan baik
-- **Data Loss**: 30% event dengan P-S interval panjang akan ter-truncate atau hilang
-
-### **Solusi Window Size 99% Coverage:**
-
-- **Window 135 detik (13,500 samples)** untuk menangkap **99% data Indonesia**
-- **Berdasarkan**: 99th percentile (117.1 detik) + margin safety 18 detik
-- **Trade-off**: Memory usage lebih tinggi, tetapi coverage maksimal
-- **Hasil**: Dari ~70% → **99% coverage** untuk data seismik Indonesia
-
-
-
-## 🚀 **CARA TRAINING**
-
-### **Scenario 1: Training Baru (From Scratch)**
-
+### **1. Training Baru dengan Pretrained Model:**
 ```bash
-# Training dari awal dengan window 135 detik
-bash run_training_indonesia.sh
+bash run_training_indonesia_3000.sh \
+    ../augmentasi-data-phasenet-full/dataset_phasenet_aug/npz_padded \
+    ../augmentasi-data-phasenet-full/dataset_phasenet_aug/padded_train_list.csv \
+    ../augmentasi-data-phasenet-full/dataset_phasenet_aug/npz_padded \
+    ../augmentasi-data-phasenet-full/dataset_phasenet_aug/padded_valid_list.csv
 ```
 
-**Karakteristik:**
-- Memulai training dari random weights
-- Use case: Eksperimen parameter baru
-
-### **Scenario 2: Fine-tuning dari Model Pre-trained (Recommended)**
-
+### **2. Training Parameters (Optimized):**
 ```bash
-# Fine-tuning dari model PhaseNet yang sudah bagus (190703-214543)
-bash resume_training_indonesia.sh
+EPOCHS=50                   # Fewer epochs (pretrained model)
+BATCH_SIZE=16              # Smaller untuk stability
+LEARNING_RATE=0.00001      # Lower untuk fine-tuning
+DROP_RATE=0.05             # Lower dropout
+DECAY_STEP=10              # Less frequent decay
+DECAY_RATE=0.98            # Gentler decay
 ```
 
-**Karakteristik:**
-- Transfer learning dari model pre-trained yang telah dilatih sebelumnya oleh pembuat PhaseNet.
+### **3. Monitor Training:**
+```bash
+# Check training progress
+tail -f model_indonesia_3000/sliding3000_*/training_history.csv
 
-## 🔄 **PERBEDAAN SCRIPT TRAINING**
-
-### **`run_training_indonesia.sh` - Training Baru**
-- **Fungsi**: Memulai training dari awal (fresh start)
-- **Starting Point**: Random weights initialization
-- **Model Output**: `model_indonesia/YYMMDD-HHMMSS/`
-- **Use Case**: 
-  - Training pertama kali
-  - Eksperimen dengan parameter baru
-
-### **`resume_training_indonesia.sh` - Fine-tuning**
-- **Fungsi**: Fine-tuning dari model pre-trained yang sudah bagus
-- **Starting Point**: Model `190703-214543` (pre-trained PhaseNet)
-- **Model Output**: `model_indonesia/YYMMDD-HHMMSS/`
-- Transfer learning yang efisien
-
-
-### **Modifikasi pada File Existing:**
-- **model.py**: Ditambahkan support untuk window size besar (13,500 samples)
-- **util.py**: Ditambahkan utility functions untuk compatibility
+# View loss curves
+eog model_indonesia_3000/sliding3000_*/loss_curves.png
+```
 
 ---
 
-## ⚙️ **KONFIGURASI TEKNIS**
+## 🔄 **Sliding Window Strategy - Technical Details**
 
-### **Parameter Training:**
-- Parameter training dapat diubah di file `run_training_indonesia.sh` dan `resume_training_indonesia.sh`
+### **🎯 Strategy Overview:**
+```
+Original Data Indonesia: [--------- 30,000+ samples (300+ detik) ---------]
+
+Sliding Windows (3000 samples each):
+Window 1: [--- 3000 samples ---]
+Window 2:      [--- 3000 samples ---]  (50% overlap)
+Window 3:           [--- 3000 samples ---]
+...
+Window N:                          [--- 3000 samples ---]
+```
+
+### **📈 Benefits:**
+- ✅ **20x More Training Data**: 2,053 files → 37,050+ training windows
+- ✅ **Compatible Architecture**: Langsung compatible dengan model pretrained
+
+
+### **⚙️ Configuration:**
+```python
+# DataConfig_Indonesia_3000
+window_length = 3000    # 30 seconds (same as pretrained)
+window_step = 1500      # 15 seconds (50% overlap)
+sampling_rate = 100     # 100 Hz
+X_shape = [3000, 1, 3]  # Compatible dengan STEAD model
+Y_shape = [3000, 1, 3]
+```
+
+### **🧠 Transfer Learning Process:**
+
+#### **1. Pretrained Model Loading:**
+- **Source**: Model `190703-214543` (STEAD dataset)
+- **Loaded**: 57/327 variables (17.4% - core neural network weights)
+- **Skipped**: 270 optimizer variables (normal untuk transfer learning)
+- **Scaling**: Weights di-scale untuk numerical stability
+
+#### **2. Weight Scaling Strategy:**
+```python
+# Convolution kernels: 0.1x (numerical stability)
+scaled_value = checkpoint_value * 0.1
+
+# Bias terms: 0.01x (conservative scaling)  
+scaled_value = checkpoint_value * 0.01
+
+# Batch norm gamma: 0.5x (moderate scaling)
+scaled_value = checkpoint_value * 0.5
+```
+
+#### **3. Warmup Learning Rate:**
+```
+Epoch 1: LR = base_lr × 0.1   (10% of base) - Gentle start
+Epoch 2: LR = base_lr × 0.55  (55% of base) - Gradual increase
+Epoch 3: LR = base_lr × 1.0   (100% of base) - Full learning rate
+Epoch 4+: Normal decay schedule
+```
+
+---
+
+## 📁 **Files & Architecture**
+
+### **Core Training Files:**
+```
+phasenet/
+├── train_indonesia_3000.py           # Main training script (sliding window)
+├── data_reader_indonesia_sliding.py  # Data reader dengan sliding windows
+├── model.py                          # PhaseNet architecture
+└── util.py                          # Utility functions
+
+run_training_indonesia_3000.sh        # Training launcher script
+```
+
+### **Legacy Files (170s Strategy):**
+```
+phasenet/
+├── train_indonesia.py               # Fixed 170s window training
+├── data_reader_indonesia.py         # Fixed window data reader
+└── resume_training_indonesia.sh     # Resume training script
+```
+
+### **Configuration Files:**
+```
+model_indonesia_3000/sliding3000_YYMMDD-HHMMSS/
+├── config.json                      # Model configuration
+├── training_history.csv             # Loss tracking
+├── loss_curves.png                  # Training plots
+├── model_epoch_*.ckpt               # Checkpoints
+└── final_model.ckpt                 # Final trained model
+```
+
+---
+
+## 🎛️ **Training Parameters Optimization**
+
+### **Sliding Window Strategy (3000 samples):**
+| Parameter | Value | Reasoning |
+|-----------|-------|-----------|
+| **Window Size** | 3000 samples (30s) | Compatible dengan pretrained model |
+| **Overlap** | 50% (1500 samples) | Data multiplication + diversity |
+| **Batch Size** | 16 | Memory efficient untuk large dataset |
+| **Learning Rate** | 0.00001 | Lower untuk fine-tuning stability |
+| **Dropout** | 0.05 | Lower untuk transfer learning |
+| **Epochs** | 50 | Fewer epochs karena pretrained |
+
 
 
 ---
 
-## 🔄 **TRAINING WORKFLOW DETAIL**
+## 📊 **Model Performance & Validation**
 
-### **1. Data Preparation (Otomatis)**
-- Verifikasi file NPZ dan CSV exists
-- Fix CSV headers jika diperlukan
-- Analisis P-S intervals untuk optimasi window
-- Split data training/validation
+### **Training Data Generation:**
+```
+Original: 1,950 files × ~19 windows each = 37,050 training windows
+Validation: 103 files × ~19 windows each = 1,957 validation windows
 
-### **2. Model Initialization**
-- Load PhaseNet architecture dengan window size besar
-- Setup optimizer dan loss function
-- Initialize atau load existing checkpoint
-
-### **3. Training Loop**
-- Batch processing dengan memory optimization
-- Frequent checkpointing (setiap 5 epochs)
-- Training history tracking
-- Validation monitoring
-
-### **4. Resume Capability**
-- Automatic checkpoint detection
-- Training history preservation
-- Smart resume logic dengan compatibility fixes
+Data multiplication: 20x increase dari original dataset
+Coverage: 99.7% dari original data dengan sliding windows
+```
 
 ---
 
-## 🔧 **TROUBLESHOOTING & LESSONS LEARNED**
+## 🔍 **Model Comparison**
 
-### **Masalah yang Sudah Diperbaiki:**
+### **Sliding Window (3000s) vs Fixed Window (170s):**
 
-#### **1. Import Error: 'MakeDirs' from 'util'**
-**Solusi**: ✅ Implementasi utility functions langsung di training script
-```python
-def MakeDirs(dirs):
-    for d in dirs:
-        os.makedirs(d, exist_ok=True)
+| Metric | Sliding 3000s | Fixed 170s | Winner |
+|--------|---------------|------------|--------|
+| **Training Data** | 37,050 windows | 2,053 files | **Sliding** (20x more) |
+| **Transfer Learning** | ✅ STEAD pretrained | ❌ From scratch | **Sliding** |
+| **Memory Usage** | 2.2MB/batch | 14MB/batch | **Sliding** (6x less) |
+| **Architecture** | Proven & stable | Custom adaptation | **Sliding** |
+| **Training Time** | Longer (more data) | Shorter | Fixed |
+| **Coverage** | Variable per window | 99%+ guaranteed | Fixed |
+| **P-S Compatibility** | Best for <30s | Best for >30s | Depends |
+
+---
+
+## 📈 **Deployment & Production**
+
+### **1. Model Selection:**
+```bash
+# Find latest trained model
+ls -lt model_indonesia_3000/sliding3000_*/
+
+# Check training history
+cat model_indonesia_3000/sliding3000_*/training_history.csv
 ```
 
-#### **2. KeyError: 'fname' di CSV files**
-**Solusi**: Perbaiki header CSV manual
-
-#### **3. TensorFlow Regularizer Tensor Error**
-**Solusi**: ✅ Menggunakan float value langsung untuk weight_decay
-```python
-weight_decay=float(args.weight_decay)  # Bukan tensor operation
+### **2. Testing Model:**
+```bash
+python phasenet/test_indonesia.py \
+    --model_dir model_indonesia_3000/sliding3000_YYMMDD-HHMMSS \
+    --test_dir ../augmentasi-data-phasenet-full/dataset_phasenet_aug/npz_padded \
+    --test_list ../augmentasi-data-phasenet-full/dataset_phasenet_aug/padded_valid_list.csv
 ```
 
-#### **4. Variable Scope Error (global_step)**
-**Solusi**: ✅ Compatibility mode untuk checkpoint loading
+### **3. Production Inference:**
 ```python
-tf.train.get_or_create_global_step()  # Instead of creating new
-```
+# Load trained model
+model_dir = "model_indonesia_3000/sliding3000_250531-090819"
 
-#### **5. Data Loading Issues**
-**Solusi**: ✅ Robust NPZ file handling dan shape validation
-```python
-# Extract waveform dari NPZ dengan proper error handling
-data = np.load(file_path)
-waveform = data['waveform'] if 'waveform' in data else data[data.files[0]]
+# Inference on new data
+predictions = model.predict(seismic_data)
+p_picks, s_picks = extract_picks(predictions)
 ```
