@@ -180,7 +180,6 @@ Coverage: 99.7% dari original data dengan sliding windows
 |--------|---------------|------------|--------|
 | **Training Data** | 37,050 windows | 2,053 files | **Sliding** (20x more) |
 | **Transfer Learning** | ✅ NCEDC pretrained | ❌ From scratch | **Sliding** |
-| **Memory Usage** | 2.2MB/batch | 14MB/batch | **Sliding** (6x less) |
 | **Architecture** | Proven & stable | Custom adaptation | **Sliding** |
 | **Training Time** | Longer (more data) | Shorter | Fixed |
 | **Coverage** | Variable per window | 99%+ guaranteed | Fixed |
