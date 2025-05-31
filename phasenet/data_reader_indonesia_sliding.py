@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DataReader untuk PhaseNet Indonesia dengan Sliding Window 3000 samples
-Kompatibel dengan model pretrained 190703-214543 (STEAD dataset)
+Kompatibel dengan model pretrained 190703-214543 (NCEDC dataset)
 
 Strategy: Pecah data Indonesia (30,000+ samples) menjadi multiple windows 3000 samples
 """

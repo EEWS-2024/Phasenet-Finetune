@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Training script untuk PhaseNet Indonesia dengan Sliding Window 3000 samples
-# Kompatibel dengan model pretrained 190703-214543 (STEAD dataset)
+# Kompatibel dengan model pretrained 190703-214543 (NCEDC dataset)
 
 echo "🚀 PhaseNet Indonesia Training dengan Sliding Window 3000 samples"
 echo "================================================================="
@@ -78,7 +78,7 @@ echo "  Epochs: $EPOCHS"
 echo "  Batch size: $BATCH_SIZE"
 echo "  Learning rate: $LEARNING_RATE"
 echo "  Dropout rate: $DROP_RATE"
-echo "  Transfer learning: STEAD pretrained model"
+echo "  Transfer learning: NCEDC pretrained model"
 echo ""
 
 # Create output directories

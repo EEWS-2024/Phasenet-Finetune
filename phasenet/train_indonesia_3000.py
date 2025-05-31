@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Training script untuk PhaseNet Indonesia dengan Sliding Window 3000 samples
-Kompatibel dengan model pretrained 190703-214543 (STEAD dataset)
+Kompatibel dengan model pretrained 190703-214543 (NCEDC dataset)
 
 CATATAN: Warning TensorFlow tentang 'is_training' placeholder adalah NORMAL dan bisa diabaikan.
 """

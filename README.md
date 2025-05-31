@@ -1,6 +1,6 @@
 # PhaseNet Indonesia - Complete Training & Fine-tuning Guide
 
-Repository ini adalah adaptasi dari [PhaseNet](https://github.com/AI4EPS/PhaseNet) yang telah dioptimalkan untuk dataset gempa Indonesia menggunakan **sliding window strategy** dan **transfer learning** dari model pretrained STEAD dataset.
+Repository ini adalah adaptasi dari [PhaseNet](https://github.com/AI4EPS/PhaseNet) yang telah dioptimalkan untuk dataset gempa Indonesia menggunakan **sliding window strategy** dan **transfer learning** dari model pretrained NCEDC dataset.
 
 ## 🎯 **Overview**
 
@@ -8,7 +8,7 @@ PhaseNet Indonesia menggunakan **dua strategi windowing** yang telah dioptimalka
 
 1. **🔄 Sliding Window 3000 samples (30s)** - **RECOMMENDED**
    - Compatible dengan model pretrained PhaseNet
-   - Transfer learning dari STEAD dataset
+   - Transfer learning dari NCEDC dataset
 
 2. **📏 Fixed Window 170s** - Legacy approach
    - Custom architecture untuk data Indonesia
@@ -98,14 +98,14 @@ Window N:                          [--- 3000 samples ---]
 window_length = 3000    # 30 seconds (same as pretrained)
 window_step = 1500      # 15 seconds (50% overlap)
 sampling_rate = 100     # 100 Hz
-X_shape = [3000, 1, 3]  # Compatible dengan STEAD model
+X_shape = [3000, 1, 3]  # Compatible dengan model pretrained NCEDC
 Y_shape = [3000, 1, 3]
 ```
 
 ### **🧠 Transfer Learning Process:**
 
 #### **1. Pretrained Model Loading:**
-- **Source**: Model `190703-214543` (STEAD dataset)
+- **Source**: Model `190703-214543` (NCEDC dataset)
 - **Loaded**: 57/327 variables (17.4% - core neural network weights)
 - **Skipped**: 270 optimizer variables (normal untuk transfer learning)
 - **Scaling**: Weights di-scale untuk numerical stability
@@ -185,7 +185,7 @@ Coverage: 99.7% dari original data dengan sliding windows
 | Metric | Sliding 3000s | Fixed 170s | Winner |
 |--------|---------------|------------|--------|
 | **Training Data** | 37,050 windows | 2,053 files | **Sliding** (20x more) |
-| **Transfer Learning** | ✅ STEAD pretrained | ❌ From scratch | **Sliding** |
+| **Transfer Learning** | ✅ NCEDC pretrained | ❌ From scratch | **Sliding** |
 | **Memory Usage** | 2.2MB/batch | 14MB/batch | **Sliding** (6x less) |
 | **Architecture** | Proven & stable | Custom adaptation | **Sliding** |
 | **Training Time** | Longer (more data) | Shorter | Fixed |
