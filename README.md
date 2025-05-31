@@ -2,20 +2,20 @@
 
 Repository ini adalah adaptasi dari [PhaseNet](https://github.com/AI4EPS/PhaseNet) yang telah dioptimalkan untuk dataset gempa Indonesia menggunakan **sliding window strategy** dan **transfer learning** dari model pretrained NCEDC dataset.
 
-## 🎯 **Overview**
+## **Overview**
 
 PhaseNet Indonesia menggunakan **dua strategi windowing** yang telah dioptimalkan untuk karakteristik seismik Indonesia:
 
-1. **🔄 Sliding Window 3000 samples (30s)**
+1. **Sliding Window 3000 samples (30s)**
    - Compatible dengan model pretrained PhaseNet
    - Transfer learning dari NCEDC dataset
 
-2. **📏 Fixed Window 170s** - Legacy approach
+2. **Fixed Window 170s** - Legacy approach
    - Custom architecture untuk data Indonesia
 
 ---
 
-## 📊 **Dataset Indonesia**
+## **Dataset Indonesia**
 
 ### **Format Data:**
 - **NPZ Files**: `dataset_phasenet_aug/npz_padded/`
@@ -41,7 +41,7 @@ PhaseNet Indonesia menggunakan **dua strategi windowing** yang telah dioptimalka
 
 ---
 
-## 🚀 **Sliding Window Strategy**
+## **Sliding Window Strategy**
 
 ### **1. Training Baru dengan Pretrained Model:**
 ```bash
@@ -82,9 +82,9 @@ eog model_indonesia/finetuned/sliding3000_*/loss_curves.png
 
 ---
 
-## 🔄 **Sliding Window Strategy - Technical Details**
+## **Sliding Window Strategy - Technical Details**
 
-### **🎯 Strategy Overview:**
+### **Strategy Overview:**
 ```
 Original Data Indonesia: [--------- 30,000+ samples (300+ detik) ---------]
 
@@ -96,12 +96,12 @@ Window 3:           [--- 3000 samples ---]
 Window N:                          [--- 3000 samples ---]
 ```
 
-### **📈 Benefits:**
-- ✅ **20x More Training Data**: 2,053 files → 37,050+ training windows
-- ✅ **Compatible Architecture**: Langsung compatible dengan model pretrained
+### **Benefits:**
+- **20x More Training Data**: 2,053 files → 37,050+ training windows
+- **Compatible Architecture**: Langsung compatible dengan model pretrained
 
 
-### **⚙️ Configuration:**
+### **Configuration:**
 ```python
 # DataConfig_Indonesia_3000
 window_length = 3000    # 30 seconds (same as pretrained)
@@ -111,7 +111,7 @@ X_shape = [3000, 1, 3]  # Compatible dengan model pretrained NCEDC
 Y_shape = [3000, 1, 3]
 ```
 
-### **🧠 Transfer Learning Process:**
+### **Transfer Learning Process:**
 
 #### **1. Pretrained Model Loading:**
 - **Source**: Model `190703-214543` (NCEDC dataset)
@@ -141,7 +141,7 @@ Epoch 4+: Normal decay schedule
 
 ---
 
-## 📁 **Files & Architecture**
+## **Files & Architecture**
 
 ### **Output Directory Structure:**
 ```
@@ -183,7 +183,7 @@ model_indonesia/
 
 ---
 
-## 📊 **Model Performance & Validation**
+## **Model Performance & Validation**
 
 ### **Training Data Generation:**
 ```
@@ -196,14 +196,14 @@ Coverage: 99.7% dari original data dengan sliding windows
 
 ---
 
-## 🔍 **Model Comparison**
+## **Model Comparison**
 
 ### **Sliding Window (3000s) vs Fixed Window (170s):**
 
 | Metric | Sliding 3000s | Fixed 170s |
 |--------|---------------|------------|
 | **Training Data** | 37,050 windows | 2,053 files |
-| **Transfer Learning** | ✅ NCEDC pretrained | ❌ From scratch |
+| **Transfer Learning** | NCEDC pretrained | From scratch |
 | **Architecture** | Proven & stable | Custom adaptation |
 | **Training Time** | Longer (more data) | Shorter |
 | **Coverage** | Variable per window | 99%+ guaranteed |
