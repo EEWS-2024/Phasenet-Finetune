@@ -45,7 +45,7 @@ PhaseNet Indonesia menggunakan **dua strategi windowing** yang telah dioptimalka
 
 ### **1. Training Baru dengan Pretrained Model:**
 ```bash
-bash run_training_indonesia_3000.sh \
+bash run_finetuning_indonesia.sh \
     ../augmentasi-data-phasenet-full/dataset_phasenet_aug/npz_padded \
     ../augmentasi-data-phasenet-full/dataset_phasenet_aug/padded_train_list.csv \
     ../augmentasi-data-phasenet-full/dataset_phasenet_aug/npz_padded \
@@ -142,15 +142,9 @@ phasenet/
 ├── model.py                          # PhaseNet architecture
 └── util.py                          # Utility functions
 
-run_training_indonesia_3000.sh        # Training launcher script
-```
-
-### **Legacy Files (170s Strategy):**
-```
-phasenet/
-├── train_indonesia.py               # Fixed 170s window training
-├── data_reader_indonesia.py         # Fixed window data reader
-└── resume_training_indonesia.sh     # Resume training script
+run_finetuning_indonesia.sh        # Training launcher script for finetuning
+run_training_scratch_indonesia.sh  # Training launcher script for training from scratch
+resume_training_indonesia.sh       # Resume training script
 ```
 
 ### **Configuration Files:**

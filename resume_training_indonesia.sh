@@ -42,7 +42,7 @@ else
     # Use latest model automatically (original behavior)
     if [ ! -d "model_indonesia/scratch" ]; then
         echo "❌ No scratch models directory found: model_indonesia/scratch"
-        echo "Please run training from scratch first using: bash run_training_indonesia.sh"
+        echo "Please run training from scratch first using: bash run_training_scratch_indonesia.sh"
         exit 1
     fi
     
@@ -50,7 +50,7 @@ else
     
     if [ -z "$LATEST_SCRATCH_MODEL" ]; then
         echo "❌ No models found in model_indonesia/scratch/"
-        echo "Please run training from scratch first using: bash run_training_indonesia.sh"
+        echo "Please run training from scratch first using: bash run_training_scratch_indonesia.sh"
         exit 1
     fi
     

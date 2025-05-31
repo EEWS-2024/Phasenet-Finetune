@@ -88,7 +88,7 @@ def main():
         print("\n✅ Data split preparation completed successfully!")
         print("\nNext steps:")
         print("1. Run analysis: python3 analyze_ps_intervals_99pct.py")
-        print("2. Start training: bash ../run_training_indonesia.sh")
+        print("2. Start training: bash ../run_training_scratch_indonesia.sh")
     else:
         print("\n❌ Data split preparation failed!")
 
