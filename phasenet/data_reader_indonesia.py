@@ -99,34 +99,40 @@ class DataReader_Indonesia_Train(DataReader):
             p_idx = max(1000, min(p_idx, sample.shape[0] - self.window_length))  # Allow earlier start
             s_idx = max(1000, min(s_idx, sample.shape[0] - self.window_length))
             
-            # Improved windowing strategy with optimal buffers
-            # Target: 10s buffer before P + P-S interval + 10s buffer after S
-            BUFFER_BEFORE_P = 1000   # 10 detik sebelum P
-            BUFFER_AFTER_S = 1000    # 10 detik sesudah S
+            # Enhanced windowing strategy dengan equal buffers sebelum P dan sesudah S
+            # Target: buffer_sama sebelum P + P-S interval + buffer_sama sesudah S = 170 detik
+            MIN_BUFFER = 1000  # Minimum 10 detik per sisi
             
             ps_interval = s_idx - p_idx
             
-            # Strategy: Always ensure buffer before P and after S
-            # Start window 10 seconds before P-wave
-            start_idx = p_idx - BUFFER_BEFORE_P
+            # Hitung buffer yang terdistribusi merata di kedua sisi
+            total_buffer_available = self.window_length - ps_interval
+            buffer_each_side = max(MIN_BUFFER, total_buffer_available // 2)
+            
+            # Jika P-S interval sangat panjang, gunakan minimum buffer
+            if ps_interval > (self.window_length - 2 * MIN_BUFFER):
+                buffer_each_side = MIN_BUFFER
+                print(f"Long P-S interval {ps_interval/100:.1f}s detected, using minimum buffer {MIN_BUFFER/100:.1f}s")
+            
+            # Strategy: Start buffer_each_side sebelum P-wave
+            start_idx = p_idx - buffer_each_side
             
             # Check if S-wave + buffer fits within window
-            s_wave_end_with_buffer = s_idx + BUFFER_AFTER_S
+            s_wave_end_with_buffer = s_idx + buffer_each_side
             window_end = start_idx + self.window_length
             
             if s_wave_end_with_buffer > window_end:
-                # S-wave + buffer doesn't fit, adjust strategy
-                if ps_interval <= 15000:  # P-S ≤ 150 seconds, try to fit both with buffers
-                    # Center window pada P-S interval dengan buffer
+                # S-wave + buffer doesn't fit, adjust strategy for very long intervals
+                if ps_interval <= 15000:  # P-S ≤ 150 seconds, center pada P-S dengan equal buffers
                     center = (p_idx + s_idx) // 2
                     start_idx = center - self.window_length // 2
                     
                     # Ensure minimum buffer before P
-                    if (p_idx - start_idx) < BUFFER_BEFORE_P:
-                        start_idx = p_idx - BUFFER_BEFORE_P
+                    if (p_idx - start_idx) < MIN_BUFFER:
+                        start_idx = p_idx - MIN_BUFFER
                 else:
-                    # Very long P-S interval, prioritize P-wave dengan buffer
-                    start_idx = p_idx - BUFFER_BEFORE_P
+                    # Very long P-S interval (>150s), prioritize P-wave dengan minimum buffer
+                    start_idx = p_idx - MIN_BUFFER
             
             # Ensure we don't exceed data bounds
             start_idx = max(0, start_idx)
@@ -251,34 +257,40 @@ class DataReader_Indonesia_Test(DataReader):
             p_idx = max(1000, min(p_idx, sample.shape[0] - self.window_length))  # Allow earlier start
             s_idx = max(1000, min(s_idx, sample.shape[0] - self.window_length))
             
-            # Improved windowing strategy with optimal buffers
-            # Target: 10s buffer before P + P-S interval + 10s buffer after S
-            BUFFER_BEFORE_P = 1000   # 10 detik sebelum P
-            BUFFER_AFTER_S = 1000    # 10 detik sesudah S
+            # Enhanced windowing strategy dengan equal buffers sebelum P dan sesudah S
+            # Target: buffer_sama sebelum P + P-S interval + buffer_sama sesudah S = 170 detik
+            MIN_BUFFER = 1000  # Minimum 10 detik per sisi
             
             ps_interval = s_idx - p_idx
             
-            # Strategy: Always ensure buffer before P and after S
-            # Start window 10 seconds before P-wave
-            start_idx = p_idx - BUFFER_BEFORE_P
+            # Hitung buffer yang terdistribusi merata di kedua sisi
+            total_buffer_available = self.window_length - ps_interval
+            buffer_each_side = max(MIN_BUFFER, total_buffer_available // 2)
+            
+            # Jika P-S interval sangat panjang, gunakan minimum buffer
+            if ps_interval > (self.window_length - 2 * MIN_BUFFER):
+                buffer_each_side = MIN_BUFFER
+                print(f"Long P-S interval {ps_interval/100:.1f}s detected, using minimum buffer {MIN_BUFFER/100:.1f}s")
+            
+            # Strategy: Start buffer_each_side sebelum P-wave
+            start_idx = p_idx - buffer_each_side
             
             # Check if S-wave + buffer fits within window
-            s_wave_end_with_buffer = s_idx + BUFFER_AFTER_S
+            s_wave_end_with_buffer = s_idx + buffer_each_side
             window_end = start_idx + self.window_length
             
             if s_wave_end_with_buffer > window_end:
-                # S-wave + buffer doesn't fit, adjust strategy
-                if ps_interval <= 15000:  # P-S ≤ 150 seconds, try to fit both with buffers
-                    # Center window pada P-S interval dengan buffer
+                # S-wave + buffer doesn't fit, adjust strategy for very long intervals
+                if ps_interval <= 15000:  # P-S ≤ 150 seconds, center pada P-S dengan equal buffers
                     center = (p_idx + s_idx) // 2
                     start_idx = center - self.window_length // 2
                     
                     # Ensure minimum buffer before P
-                    if (p_idx - start_idx) < BUFFER_BEFORE_P:
-                        start_idx = p_idx - BUFFER_BEFORE_P
+                    if (p_idx - start_idx) < MIN_BUFFER:
+                        start_idx = p_idx - MIN_BUFFER
                 else:
-                    # Very long P-S interval, prioritize P-wave dengan buffer
-                    start_idx = p_idx - BUFFER_BEFORE_P
+                    # Very long P-S interval (>150s), prioritize P-wave dengan minimum buffer
+                    start_idx = p_idx - MIN_BUFFER
             
             # Ensure we don't exceed data bounds
             start_idx = max(0, start_idx)
