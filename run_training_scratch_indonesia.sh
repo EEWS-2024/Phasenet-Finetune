@@ -11,10 +11,10 @@ DATASET_DIR="dataset_phasenet_aug"
 OUTPUT_MODEL_DIR="model_indonesia/scratch"
 
 # Training parameters optimized untuk Indonesia
-EPOCHS=3
+EPOCHS=200
 BATCH_SIZE=64                    
-LEARNING_RATE=0.000025         
-DROP_RATE=0.15                
+LEARNING_RATE=0.0001         
+DROP_RATE=0.05                
 WEIGHT_DECAY=0.0001           # L2 regularization
 SAVE_INTERVAL=10             
 
