@@ -187,10 +187,44 @@ def test_fn(args, data_reader):
                     p_true = float(p_true_batch[i])
                     s_true = float(s_true_batch[i])
                     
-                    # Get predictions (shape: [3000, 3] - Background, P, S)
-                    preds = pred_batch[i]  # Shape: [3000, 3]
-                    p_prob = preds[:, 1]   # P-wave probabilities
-                    s_prob = preds[:, 2]   # S-wave probabilities
+                    # Get predictions (shape should be: [3000, 3] - Background, P, S)
+                    preds = pred_batch[i]  # Shape: [3000, 3] or [3000, 1, 3]
+                    
+                    # Debug: print shapes for first few samples
+                    if batch_count == 0 and i < 2:
+                        print(f"Debug - pred_batch shape: {pred_batch.shape}")
+                        print(f"Debug - preds shape: {preds.shape}")
+                        
+                        # Also check prediction values after shape handling
+                        if len(preds.shape) == 3 and preds.shape[1] == 1:
+                            preds_debug = np.squeeze(preds, axis=1)
+                        else:
+                            preds_debug = preds
+                        
+                        print(f"Debug - preds after squeeze: {preds_debug.shape}")
+                        print(f"Debug - P prob range: {preds_debug[:, 1].min():.6f} to {preds_debug[:, 1].max():.6f}")
+                        print(f"Debug - S prob range: {preds_debug[:, 2].min():.6f} to {preds_debug[:, 2].max():.6f}")
+                        print(f"Debug - Background prob range: {preds_debug[:, 0].min():.6f} to {preds_debug[:, 0].max():.6f}")
+                        print(f"Debug - Sum of all probs (should be ~1): {preds_debug.sum(axis=1).mean():.6f}")
+                    
+                    # Handle different prediction shapes
+                    if len(preds.shape) == 3 and preds.shape[1] == 1:
+                        # Shape is [3000, 1, 3] - squeeze middle dimension
+                        preds = np.squeeze(preds, axis=1)  # Now [3000, 3]
+                    elif len(preds.shape) == 2:
+                        # Shape is already [3000, 3] - use as is
+                        pass
+                    else:
+                        print(f"Warning: Unexpected prediction shape: {preds.shape}")
+                        continue
+                    
+                    # Now extract probabilities safely
+                    if preds.shape[-1] >= 3:
+                        p_prob = preds[:, 1]   # P-wave probabilities
+                        s_prob = preds[:, 2]   # S-wave probabilities
+                    else:
+                        print(f"Warning: Insufficient classes in predictions: {preds.shape}")
+                        continue
                     
                     # Find peaks for P and S waves
                     p_peaks, _ = find_peaks(p_prob, height=min_threshold, distance=10)
@@ -378,7 +412,7 @@ def main():
     )
     
     print(f"Test dataset loaded: {len(data_reader.data_list)} files")
-    print(f"Sliding window config: {data_config.window_length} samples, {data_config.window_step} step")
+    print(f"Sliding window config: {data_config.window_length} samples, {data_reader.window_step} step")
     
     # Run testing
     start_time = time.time()
