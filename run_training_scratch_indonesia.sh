@@ -3,7 +3,7 @@
 # Script untuk menjalankan training PhaseNet Indonesia 
 
 echo "=================================================="
-echo "🚀 TRAINING PHASENET INDONESIA FROM SCRATCH"
+echo "TRAINING PHASENET INDONESIA FROM SCRATCH"
 echo "=================================================="
 
 # Configuration
@@ -21,7 +21,7 @@ SAVE_INTERVAL=10
 # Testing parameters
 MIN_PROB=0.05                # Minimum probability threshold for detection (lower = more sensitive)
 
-echo "🎯 Configuration:"
+echo "Configuration:"
 echo "   Dataset: $DATASET_DIR"
 echo "   Output model: $OUTPUT_MODEL_DIR"
 echo "   Epochs: $EPOCHS"
@@ -35,17 +35,17 @@ echo "=================================================="
 
 # Check if dataset exists
 if [ ! -d "$DATASET_DIR/npz_padded" ]; then
-    echo "❌ Dataset directory not found: $DATASET_DIR/npz_padded"
+    echo "Dataset directory not found: $DATASET_DIR/npz_padded"
     exit 1
 fi
 
 # Check if CSV files exist
 if [ ! -f "$DATASET_DIR/train_list_99pct.csv" ] || [ ! -f "$DATASET_DIR/valid_list_99pct.csv" ]; then
-    echo "❌ CSV files not found. Please run prepare_data_split_99pct.py first"
+    echo "CSV files not found. Please run prepare_data_split_99pct.py first"
     exit 1
 fi
 
-echo "✅ All prerequisites found"
+echo "All prerequisites found"
 echo ""
 
 # Create output directories
@@ -54,7 +54,7 @@ mkdir -p "$OUTPUT_MODEL_DIR"
 # Change to phasenet directory
 cd phasenet
 
-echo "🚀 Starting training from scratch with optimized parameters..."
+echo "Starting training from scratch with optimized parameters..."
 
 # Run training
 python train_indonesia.py \
@@ -75,7 +75,7 @@ python train_indonesia.py \
 if [ $? -eq 0 ]; then
     echo ""
     echo "=================================================="
-    echo "✅ TRAINING COMPLETED SUCCESSFULLY!"
+    echo "TRAINING COMPLETED SUCCESSFULLY!"
     echo ""
     echo "Model tersimpan di: ../$OUTPUT_MODEL_DIR"
     echo ""
@@ -97,12 +97,12 @@ if [ $? -eq 0 ]; then
             --min_prob=$MIN_PROB
         
         if [ $? -eq 0 ]; then
-            echo "✅ Testing completed successfully!"
+            echo "Testing completed successfully!"
         else
-            echo "⚠️  Testing failed, but training was successful"
+            echo "Testing failed, but training was successful"
         fi
     else
-        echo "⚠️  Could not find trained model for testing"
+        echo "Could not find trained model for testing"
     fi
     
     echo ""
@@ -118,7 +118,7 @@ if [ $? -eq 0 ]; then
     echo "========================="
 else
     echo ""
-    echo "❌ TRAINING FAILED!"
+    echo "TRAINING FAILED!"
     echo "Check the error messages above for details."
     exit 1
 fi 
