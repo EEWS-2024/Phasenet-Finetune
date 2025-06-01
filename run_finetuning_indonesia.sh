@@ -63,9 +63,9 @@ fi
 echo ""
 
 # Training parameters
-EPOCHS=2                  
-BATCH_SIZE=128              
-LEARNING_RATE=0.00001     
+EPOCHS=100                  
+BATCH_SIZE=256              
+LEARNING_RATE=0.00005
 DROP_RATE=0.05             
 DECAY_STEP=10              
 DECAY_RATE=0.98            
