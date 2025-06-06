@@ -124,7 +124,7 @@ class DataReader_Indonesia_Train(DataReader):
             if s_wave_end_with_buffer > window_end:
                 # S-wave + buffer doesn't fit, adjust strategy for very long intervals
                 if ps_interval <= 15000:  # P-S ≤ 150 seconds, center pada P-S dengan equal buffers
-                    center = (p_idx + s_idx) // 2
+                center = (p_idx + s_idx) // 2
                     start_idx = center - self.window_length // 2
                     
                     # Ensure minimum buffer before P
@@ -282,7 +282,7 @@ class DataReader_Indonesia_Test(DataReader):
             if s_wave_end_with_buffer > window_end:
                 # S-wave + buffer doesn't fit, adjust strategy for very long intervals
                 if ps_interval <= 15000:  # P-S ≤ 150 seconds, center pada P-S dengan equal buffers
-                    center = (p_idx + s_idx) // 2
+                center = (p_idx + s_idx) // 2
                     start_idx = center - self.window_length // 2
                     
                     # Ensure minimum buffer before P
