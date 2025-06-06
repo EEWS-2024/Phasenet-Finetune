@@ -6,137 +6,97 @@
 echo "PhaseNet Indonesia Decoder-Only Fine-tuning dengan Sliding Window 3000 samples"
 echo "=============================================================================="
 
-# Activate conda environment phasenet
+# Activate conda environment
 echo "Activating conda environment phasenet..."
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate phasenet
 
-# Check if conda environment is active
-if [[ "$CONDA_DEFAULT_ENV" != "phasenet" ]]; then
-    echo "❌ Failed to activate phasenet environment"
+if [ $? -eq 0 ]; then
+    echo "✅ Conda environment phasenet activated"
+else
+    echo "❌ Failed to activate conda environment phasenet"
     exit 1
 fi
 
-echo "✅ Conda environment phasenet activated"
-
-# Disable GPU - use CPU only
-export CUDA_VISIBLE_DEVICES=""
-export TF_CPP_MIN_LOG_LEVEL=2
-echo "🖥️  GPU disabled - using CPU only for training"
-
-# Check if required arguments are provided
-if [ "$#" -lt 2 ]; then
-    echo "Usage: $0 <train_dir> <train_list> [valid_dir] [valid_list]"
-    echo ""
-    echo "Example:"
-    echo "  $0 data_train_indonesia train_list_indonesia.csv"
-    echo "  $0 data_train_indonesia train_list_indonesia.csv data_valid_indonesia valid_list_indonesia.csv"
-    echo ""
-    exit 1
+# Check if GPU is available
+if command -v nvidia-smi &> /dev/null; then
+    echo "🚀 GPU detected - using GPU for training"
+    GPU_AVAILABLE=true
+else
+    echo "🖥️  No GPU detected - using CPU only"
+    GPU_AVAILABLE=false
 fi
 
-TRAIN_DIR="$1"
-TRAIN_LIST="$2"
-VALID_DIR="$3"
-VALID_LIST="$4"
-
-# Check if training data exists
-if [ ! -d "$TRAIN_DIR" ]; then
-    echo "Training directory tidak ditemukan: $TRAIN_DIR"
-    exit 1
-fi
-
-if [ ! -f "$TRAIN_LIST" ]; then
-    echo "Training list tidak ditemukan: $TRAIN_LIST"
-    exit 1
-fi
-
-# Check pretrained model
+# Set parameters
+TRAINING_DIR="$1"
+TRAINING_LIST="$2"
 PRETRAINED_MODEL="model/190703-214543"
-if [ ! -d "$PRETRAINED_MODEL" ]; then
-    echo "Pretrained model tidak ditemukan: $PRETRAINED_MODEL"
-    echo "   Pastikan model pretrained ada di direktori model/"
-    exit 1
-fi
+VALIDATION_DIR="$3"
+VALIDATION_LIST="$4"
+
+EPOCHS=2                 # More epochs untuk GPU
+BATCH_SIZE=512            # Larger batch size untuk GPU
+LEARNING_RATE=0.0001      # Higher learning rate untuk decoder
+DROP_RATE=0.05            
+DECAY_STEP=10              
+DECAY_RATE=0.98           
+TESTING_MIN_PROB=0.1
+
 
 echo "KONFIGURASI DECODER-ONLY FINE-TUNING:"
-echo "  Training dir: $TRAIN_DIR"
-echo "  Training list: $TRAIN_LIST"
+echo "  Training dir: $TRAINING_DIR"
+echo "  Training list: $TRAINING_LIST"
 echo "  Pretrained model: $PRETRAINED_MODEL"
 
-if [ -n "$VALID_DIR" ] && [ -n "$VALID_LIST" ]; then
-    if [ -d "$VALID_DIR" ] && [ -f "$VALID_LIST" ]; then
-        echo "  Validation dir: $VALID_DIR"
-        echo "  Validation list: $VALID_LIST"
-        VALIDATION_ARGS="--valid_dir $VALID_DIR --valid_list $VALID_LIST"
-        HAS_VALIDATION=true
-    else
-        echo "Validation data tidak valid, training tanpa validation"
-        VALIDATION_ARGS=""
-        HAS_VALIDATION=false
-    fi
+if [ -n "$VALIDATION_DIR" ] && [ -n "$VALIDATION_LIST" ]; then
+    echo "  Validation dir: $VALIDATION_DIR"
+    echo "  Validation list: $VALIDATION_LIST"
+    VALIDATION_PARAMS="--valid_dir $VALIDATION_DIR --valid_list $VALIDATION_LIST"
+    VALIDATION_ENABLED=true
 else
-    echo "  Validation: Tidak ada"
-    VALIDATION_ARGS=""
-    HAS_VALIDATION=false
+    VALIDATION_PARAMS=""
+    VALIDATION_ENABLED=false
 fi
 
 echo ""
-
-# Training parameters untuk decoder-only fine-tuning 
-EPOCHS=200                   
-BATCH_SIZE=256               
-LEARNING_RATE=0.0001        
-DROP_RATE=0.05             
-DECAY_STEP=8               
-DECAY_RATE=0.95            
-SAVE_INTERVAL=5             
-
-# Testing parameters
-MIN_PROB=0.1                
-
-echo "DECODER-ONLY FINE-TUNING PARAMETERS (CPU):"
+echo "DECODER-ONLY FINE-TUNING PARAMETERS (GPU-optimized):"
 echo "  Strategy: Encoder FROZEN, Decoder TRAINABLE"
 echo "  Window: 3000 samples (30 detik)"
 echo "  Sliding window: 50% overlap"
-echo "  Epochs: $EPOCHS (dikurangi untuk CPU training)"
-echo "  Batch size: $BATCH_SIZE (dikurangi untuk CPU training)"
-echo "  Learning rate: $LEARNING_RATE (lebih tinggi untuk decoder)"
+echo "  Epochs: $EPOCHS"
+echo "  Batch size: $BATCH_SIZE"
+echo "  Learning rate: $LEARNING_RATE"
 echo "  Dropout rate: $DROP_RATE"
-echo "  Hardware: 🖥️  CPU ONLY (GPU disabled)"
-echo "  Encoder status: ❄️  FROZEN (tidak akan diupdate)"
-echo "  Decoder status: 🔥 TRAINABLE (akan diupdate)"
-echo "  Testing min prob: $MIN_PROB"
-echo "  Validation: $HAS_VALIDATION"
+echo "  Testing min prob: $TESTING_MIN_PROB"
+echo "  Validation: $VALIDATION_ENABLED"
+
 echo ""
-
-# Create output directories
-mkdir -p model_indonesia/decoder_only
-mkdir -p logs_indonesia/decoder_only
-
-echo "Starting decoder-only fine-tuning (CPU)..."
+echo "Starting decoder-only fine-tuning..."
 echo "   (Encoder akan dibekukan, hanya decoder yang dilatih)"
-echo "   (Training menggunakan CPU - akan lebih lambat tapi stabil)"
+if [ "$GPU_AVAILABLE" = true ]; then
+    echo "   (Training menggunakan GPU - akan lebih cepat)"
+else
+    echo "   (Training menggunakan CPU - akan lebih lambat tapi stabil)"
+fi
 echo "   (Mencegah catastrophic forgetting pada feature extraction)"
 echo ""
 
-# Run decoder-only training
+# Create logs directory
+mkdir -p logs_indonesia/decoder_only
+
+# Run decoder-only fine-tuning
 python phasenet/train_indonesia_3000_decoder_only.py \
-    --train_dir "$TRAIN_DIR" \
-    --train_list "$TRAIN_LIST" \
-    $VALIDATION_ARGS \
-    --model_dir model_indonesia/decoder_only \
+    --train_dir "$TRAINING_DIR" \
+    --train_list "$TRAINING_LIST" \
     --pretrained_model_path "$PRETRAINED_MODEL" \
-    --log_dir logs_indonesia/decoder_only \
     --epochs $EPOCHS \
     --batch_size $BATCH_SIZE \
     --learning_rate $LEARNING_RATE \
     --drop_rate $DROP_RATE \
     --decay_step $DECAY_STEP \
     --decay_rate $DECAY_RATE \
-    --save_interval $SAVE_INTERVAL \
-    --freeze_encoder \
-    --summary 2>&1 | tee logs_indonesia/decoder_only/training_output.log
+    $VALIDATION_PARAMS \
+    2>&1 | tee logs_indonesia/decoder_only/training_output.log
 
 TRAINING_EXIT_CODE=$?
 
@@ -187,13 +147,13 @@ if [ $TRAINING_EXIT_CODE -eq 0 ]; then
         echo "Running comprehensive test on validation/training data..."
         
         # Use validation data if provided, otherwise use training data for testing
-        if [ "$HAS_VALIDATION" = true ]; then
-            TEST_DIR="$VALID_DIR"
-            TEST_LIST="$VALID_LIST"
+        if [ "$VALIDATION_ENABLED" = true ]; then
+            TEST_DIR="$VALIDATION_DIR"
+            TEST_LIST="$VALIDATION_LIST"
             echo "Testing with validation dataset: $TEST_LIST"
         else
-            TEST_DIR="$TRAIN_DIR"
-            TEST_LIST="$TRAIN_LIST"
+            TEST_DIR="$TRAINING_DIR"
+            TEST_LIST="$TRAINING_LIST"
             echo "Testing with training dataset (no validation provided): $TEST_LIST"
         fi
         
@@ -209,7 +169,7 @@ if [ $TRAINING_EXIT_CODE -eq 0 ]; then
             --output_dir "$LATEST_MODEL/test_results" \
             --batch_size=2 \
             --plot_results \
-            --min_prob=$MIN_PROB 2>&1 | tee "$LATEST_MODEL/test_results/testing_output.log"
+            --min_prob=$TESTING_MIN_PROB 2>&1 | tee "$LATEST_MODEL/test_results/testing_output.log"
         
         TESTING_EXIT_CODE=$?
         

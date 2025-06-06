@@ -11,13 +11,22 @@ import sys
 
 # Set environment variables BEFORE importing TensorFlow
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'false'
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'  # Enable GPU memory growth
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices=false'
-os.environ['CUDA_VISIBLE_DEVICES'] = ''  # Disable GPU
 
 import tensorflow as tf
-# Force CPU usage
-tf.config.set_visible_devices([], 'GPU')  # Hide GPU from TensorFlow
+# Enable GPU usage with memory growth
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"🚀 GPU enabled - found {len(gpus)} GPU(s)")
+    except RuntimeError as e:
+        print(f"⚠️  GPU setup error: {e}")
+else:
+    print("🖥️  No GPU found - using CPU")
+
 tf.compat.v1.disable_eager_execution()
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
@@ -328,12 +337,21 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
     # Create model
     model = UNet(config=config, input_batch=(X_placeholder, Y_placeholder, fname_placeholder), mode='train')
     
-    # Configure for CPU-only training
-    cpu_config = tf.compat.v1.ConfigProto(device_count={'GPU': 0})
-    cpu_config.allow_soft_placement = True
-    cpu_config.log_device_placement = False
+    # Configure for GPU training with optimizations
+    gpu_config = tf.compat.v1.ConfigProto()
+    gpu_config.allow_soft_placement = True
+    gpu_config.log_device_placement = False
     
-    with tf.compat.v1.Session(config=cpu_config) as sess:
+    # GPU memory settings
+    if gpus:
+        gpu_config.gpu_options.allow_growth = True
+        gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.8  # Use 80% of GPU memory
+        print(f"🚀 Using GPU with memory growth enabled")
+    else:
+        gpu_config.device_count = {'GPU': 0}
+        print(f"🖥️  Using CPU only")
+    
+    with tf.compat.v1.Session(config=gpu_config) as sess:
         # Initialize variables PERTAMA
         sess.run(tf.compat.v1.global_variables_initializer())
         
@@ -396,34 +414,36 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
             # Calculate steps per epoch
             training_steps = int(np.ceil(len(data_reader_train.sliding_windows) / args.batch_size))
             
-            # Training loop untuk epoch ini
+            # Training loop untuk epoch ini dengan tqdm progress bar
             try:
-                for step in range(training_steps):
-                    try:
-                        # Get batch
-                        X_batch, Y_batch, fname_batch = sess.run(next_train_batch)
-                        
-                        # Train step (only decoder variables will be updated)
-                        feed_dict = {
-                            X_placeholder: X_batch,
-                            Y_placeholder: Y_batch,
-                            fname_placeholder: fname_batch,
-                            model.drop_rate: args.drop_rate,
-                            model.is_training: True
-                        }
-                        
-                        # Run training step
-                        _, loss_value = sess.run([decoder_train_op, model.loss], feed_dict=feed_dict)
-                        epoch_losses.append(loss_value)
-                        
-                        # Print progress
-                        if step % 50 == 0 or step == training_steps - 1:
+                with tqdm(total=training_steps, desc=f"Training Epoch {epoch+1}", unit="batch") as pbar:
+                    
+                    for step in range(training_steps):
+                        try:
+                            # Get batch
+                            X_batch, Y_batch, fname_batch = sess.run(next_train_batch)
+                            
+                            # Train step (only decoder variables will be updated)
+                            feed_dict = {
+                                X_placeholder: X_batch,
+                                Y_placeholder: Y_batch,
+                                fname_placeholder: fname_batch,
+                                model.drop_rate: args.drop_rate,
+                                model.is_training: True
+                            }
+                            
+                            # Run training step
+                            _, loss_value = sess.run([decoder_train_op, model.loss], feed_dict=feed_dict)
+                            epoch_losses.append(loss_value)
+                            
+                            # Update progress bar with current loss
                             avg_loss = np.mean(epoch_losses)
-                            print(f"   Step {step+1}/{training_steps}, Loss: {loss_value:.6f}, Avg: {avg_loss:.6f}")
-                        
-                    except tf.errors.OutOfRangeError:
-                        break
-                        
+                            pbar.set_description(f"Training Epoch {epoch+1} - Loss: {loss_value:.6f} Avg: {avg_loss:.6f}")
+                            pbar.update(1)
+                            
+                        except tf.errors.OutOfRangeError:
+                            break
+                            
             except Exception as e:
                 print(f"⚠️  Training error at epoch {epoch+1}: {e}")
                 break

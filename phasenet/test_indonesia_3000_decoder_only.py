@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Testing script khusus untuk PhaseNet Indonesia Decoder-Only Fine-tuned models
-Menangani struktur checkpoint yang berbeda dari model decoder-only
-Enhanced with ground truth comparison like standard testing
+Testing script untuk PhaseNet Indonesia Decoder-Only Model
+Compatible dengan hasil training decoder-only fine-tuning
 """
 
 import argparse
@@ -11,13 +10,22 @@ import sys
 
 # Set environment variables BEFORE importing TensorFlow
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'false'
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'  # Enable GPU memory growth
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices=false'
-os.environ['CUDA_VISIBLE_DEVICES'] = ''  # Disable GPU
 
 import tensorflow as tf
-# Force CPU usage
-tf.config.set_visible_devices([], 'GPU')  # Hide GPU from TensorFlow
+# Enable GPU usage with memory growth
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"🚀 GPU enabled - found {len(gpus)} GPU(s)")
+    except RuntimeError as e:
+        print(f"⚠️  GPU setup error: {e}")
+else:
+    print("🖥️  No GPU found - using CPU")
+
 tf.compat.v1.disable_eager_execution()
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
@@ -132,14 +140,23 @@ def test_fn(args, data_reader):
     # Create model in inference mode
     model = UNet(config=config, input_batch=(X_placeholder, Y_placeholder, fname_placeholder), mode='test')
     
-    # Configure for CPU-only testing
-    cpu_config = tf.compat.v1.ConfigProto(device_count={'GPU': 0})
-    cpu_config.allow_soft_placement = True
-    cpu_config.log_device_placement = False
+    # Configure for GPU testing with optimizations
+    gpu_config = tf.compat.v1.ConfigProto()
+    gpu_config.allow_soft_placement = True
+    gpu_config.log_device_placement = False
+    
+    # GPU memory settings
+    if gpus:
+        gpu_config.gpu_options.allow_growth = True
+        gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.6  # Use 60% of GPU memory for testing
+        print(f"🚀 Using GPU for testing with memory growth enabled")
+    else:
+        gpu_config.device_count = {'GPU': 0}
+        print(f"🖥️  Using CPU for testing")
     
     results = []
     
-    with tf.compat.v1.Session(config=cpu_config) as sess:
+    with tf.compat.v1.Session(config=gpu_config) as sess:
         # Initialize variables
         sess.run(tf.compat.v1.global_variables_initializer())
         
@@ -164,105 +181,109 @@ def test_fn(args, data_reader):
         # Statistics tracking
         detection_stats = {'P': 0, 'S': 0, 'PS': 0}
         
+        # Calculate total batches for progress bar
+        total_batches = int(np.ceil(len(data_reader.sliding_windows) / args.batch_size))
+        
         try:
-            while True:
-                try:
-                    # Get batch
-                    X_batch, Y_batch, fname_batch, p_idx_batch, s_idx_batch = sess.run(next_test_batch)
+            # Create progress bar dengan format yang lebih sederhana
+            with tqdm(total=total_batches, desc="Testing Progress", unit="batch") as pbar:
+                
+                while True:
                     batch_count += 1
-                    
-                    # Run inference
-                    feed_dict = {
-                        X_placeholder: X_batch,
-                        Y_placeholder: Y_batch,
-                        fname_placeholder: fname_batch,
-                        model.drop_rate: 0.0,  # No dropout during testing
-                        model.is_training: False
-                    }
-                    
-                    # Get predictions
-                    pred_batch = sess.run(model.preds, feed_dict=feed_dict)
-                    
-                    # Process each window in batch
-                    for i in range(len(X_batch)):
-                        fname = fname_batch[i].decode('utf-8')
-                        pred = pred_batch[i]  # Shape: [3000, 1, 3]
+                    try:
+                        # Get batch data (5 values: X, Y, fname, p_idx, s_idx)
+                        X_batch, Y_batch, fname_batch, p_idx_batch, s_idx_batch = sess.run(next_test_batch)
                         
-                        # Ground truth indices
-                        p_true = int(p_idx_batch[i][0]) if p_idx_batch[i][0] >= 0 else -1
-                        s_true = int(s_idx_batch[i][0]) if s_idx_batch[i][0] >= 0 else -1
-                        
-                        # Handle prediction shape
-                        if len(pred.shape) == 3 and pred.shape[1] == 1:
-                            pred = np.squeeze(pred, axis=1)  # [3000, 3]
-                        
-                        # Extract probabilities
-                        prob_P = pred[:, 1]  # P-wave probability
-                        prob_S = pred[:, 2]  # S-wave probability
-                        
-                        # Find peaks above threshold
-                        P_peaks, _ = find_peaks(prob_P, height=args.min_prob, distance=10)
-                        S_peaks, _ = find_peaks(prob_S, height=args.min_prob, distance=10)
-                        
-                        # Get best predictions
-                        p_pred = P_peaks[np.argmax(prob_P[P_peaks])] if len(P_peaks) > 0 else -1
-                        s_pred = S_peaks[np.argmax(prob_S[S_peaks])] if len(S_peaks) > 0 else -1
-                        
-                        # Get probabilities at predictions
-                        p_prob = prob_P[p_pred] if p_pred >= 0 else 0.0
-                        s_prob = prob_S[s_pred] if s_pred >= 0 else 0.0
-                        
-                        # Calculate errors (only if both true and pred exist)
-                        p_error = abs(p_pred - p_true) if p_true >= 0 and p_pred >= 0 else -1
-                        s_error = abs(s_pred - s_true) if s_true >= 0 and s_pred >= 0 else -1
-                        
-                        # Detection flags (using 50 sample tolerance)
-                        p_detected = (p_error >= 0 and p_error <= 50) if p_error >= 0 else False
-                        s_detected = (s_error >= 0 and s_error <= 50) if s_error >= 0 else False
-                        
-                        # Update statistics
-                        if p_detected:
-                            detection_stats['P'] += 1
-                        if s_detected:
-                            detection_stats['S'] += 1
-                        if p_detected and s_detected:
-                            detection_stats['PS'] += 1
-                        
-                        # Store comprehensive results (matching standard testing format)
-                        results.append({
-                            'filename': fname,
-                            'p_true': p_true,
-                            's_true': s_true,
-                            'p_pred': p_pred,
-                            's_pred': s_pred,
-                            'p_prob': p_prob,
-                            's_prob': s_prob,
-                            'p_error': p_error,
-                            's_error': s_error,
-                            'p_detected': p_detected,
-                            's_detected': s_detected,
-                            'window_idx': total_windows,
-                            # Additional decoder-only metrics
-                            'max_P_prob': np.max(prob_P),
-                            'max_S_prob': np.max(prob_S),
-                            'avg_P_prob': np.mean(prob_P),
-                            'avg_S_prob': np.mean(prob_S),
-                            'n_P_picks': len(P_peaks),
-                            'n_S_picks': len(S_peaks)
+                        # Predict
+                        pred_batch = sess.run(model.preds, feed_dict={
+                            X_placeholder: X_batch,
+                            Y_placeholder: Y_batch,
+                            fname_placeholder: fname_batch,
+                            model.drop_rate: 0.0,
+                            model.is_training: False
                         })
                         
-                        total_windows += 1
-                    
-                    # Progress update
-                    if batch_count % 10 == 0:
+                        # Process each sample in batch
+                        for i in range(len(X_batch)):
+                            fname = fname_batch[i].decode('utf-8') if isinstance(fname_batch[i], bytes) else fname_batch[i]
+                            pred = pred_batch[i]  # Shape: [3000, 1, 3]
+                            
+                            # Ground truth indices dari data reader
+                            p_true = int(p_idx_batch[i][0]) if p_idx_batch[i][0] >= 0 else -1
+                            s_true = int(s_idx_batch[i][0]) if s_idx_batch[i][0] >= 0 else -1
+                            
+                            # Handle prediction shape
+                            if len(pred.shape) == 3 and pred.shape[1] == 1:
+                                pred = np.squeeze(pred, axis=1)  # [3000, 3]
+                            
+                            # Extract predictions
+                            prob_P = pred[:, 1]  # P-wave probability
+                            prob_S = pred[:, 2]  # S-wave probability
+                            
+                            # Find peaks above threshold
+                            P_peaks, _ = find_peaks(prob_P, height=args.min_prob, distance=10)
+                            S_peaks, _ = find_peaks(prob_S, height=args.min_prob, distance=10)
+                            
+                            # Get best predictions
+                            p_pred = P_peaks[np.argmax(prob_P[P_peaks])] if len(P_peaks) > 0 else -1
+                            s_pred = S_peaks[np.argmax(prob_S[S_peaks])] if len(S_peaks) > 0 else -1
+                            
+                            # Get probabilities at predictions
+                            p_prob = prob_P[p_pred] if p_pred >= 0 else 0.0
+                            s_prob = prob_S[s_pred] if s_pred >= 0 else 0.0
+                            
+                            # Calculate errors (only if both true and pred exist)
+                            p_error = abs(p_pred - p_true) if p_true >= 0 and p_pred >= 0 else -1
+                            s_error = abs(s_pred - s_true) if s_true >= 0 and s_pred >= 0 else -1
+                            
+                            # Detection flags (using 50 sample tolerance)
+                            p_detected = (p_error >= 0 and p_error <= 50) if p_error >= 0 else False
+                            s_detected = (s_error >= 0 and s_error <= 50) if s_error >= 0 else False
+                            
+                            # Update statistics
+                            if p_detected:
+                                detection_stats['P'] += 1
+                            if s_detected:
+                                detection_stats['S'] += 1
+                            if p_detected and s_detected:
+                                detection_stats['PS'] += 1
+                            
+                            # Store comprehensive results (matching standard testing format)
+                            results.append({
+                                'filename': fname,
+                                'p_true': p_true,
+                                's_true': s_true,
+                                'p_pred': p_pred,
+                                's_pred': s_pred,
+                                'p_prob': p_prob,
+                                's_prob': s_prob,
+                                'p_error': p_error,
+                                's_error': s_error,
+                                'p_detected': p_detected,
+                                's_detected': s_detected,
+                                'window_idx': total_windows,
+                                # Additional decoder-only metrics
+                                'max_P_prob': np.max(prob_P),
+                                'max_S_prob': np.max(prob_S),
+                                'avg_P_prob': np.mean(prob_P),
+                                'avg_S_prob': np.mean(prob_S),
+                                'n_P_picks': len(P_peaks),
+                                'n_S_picks': len(S_peaks)
+                            })
+                            
+                            total_windows += 1
+                        
+                        # Update progress bar dengan statistik terkini
                         p_rate = detection_stats['P'] / max(1, total_windows) * 100
                         s_rate = detection_stats['S'] / max(1, total_windows) * 100
-                        ps_rate = detection_stats['PS'] / max(1, total_windows) * 100
-                        print(f"   Batch {batch_count}: {total_windows} windows | P: {p_rate:.1f}% | S: {s_rate:.1f}% | PS: {ps_rate:.1f}%")
                         
-                except tf.errors.OutOfRangeError:
-                    break
-                    
+                        # Update description dengan statistik
+                        pbar.set_description(f"Testing Progress - P:{p_rate:.1f}% S:{s_rate:.1f}%")
+                        pbar.update(1)
+                            
+                    except tf.errors.OutOfRangeError:
+                        break
+                        
         except Exception as e:
             print(f"⚠️  Testing error: {e}")
         
