@@ -1,0 +1,6 @@
+p_true=1: Ground truth P-wave di sample ke-1
+s_true=2719: Ground truth S-wave di sample ke-2719
+p_pred=2810: Model predict P-wave di sample ke-2810
+s_pred=-1: Model tidak detect S-wave
+p_error=2809: Error P-wave = |2810-1| = 2809 samples (BESAR!)
+p_detected=False: P-wave tidak detected (error > 50 samples tolerance)
