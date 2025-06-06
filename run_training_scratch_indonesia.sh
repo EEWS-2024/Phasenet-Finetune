@@ -12,7 +12,7 @@ OUTPUT_MODEL_DIR="model_indonesia/scratch"
 
 # Training parameters optimized untuk Indonesia
 EPOCHS=200
-BATCH_SIZE=64                    
+BATCH_SIZE=128                    
 LEARNING_RATE=0.0001         
 DROP_RATE=0.05                
 WEIGHT_DECAY=0.0001           # L2 regularization
@@ -26,7 +26,7 @@ echo "   Dataset: $DATASET_DIR"
 echo "   Output model: $OUTPUT_MODEL_DIR"
 echo "   Epochs: $EPOCHS"
 echo "   Batch size: $BATCH_SIZE"
-echo "   Learning rate: $LEARNING_RATE (optimized for 170s windows)"
+echo "   Learning rate: $LEARNING_RATE"
 echo "   Dropout rate: $DROP_RATE"
 echo "   Weight decay: $WEIGHT_DECAY"
 echo "   Window size: 170 seconds (17,000 samples) with 10s buffers"
