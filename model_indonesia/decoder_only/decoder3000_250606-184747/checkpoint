@@ -1,0 +1,3 @@
+model_checkpoint_path: "decoder_model_epoch_10.ckpt"
+all_model_checkpoint_paths: "decoder_model_epoch_5.ckpt"
+all_model_checkpoint_paths: "decoder_model_epoch_10.ckpt"
