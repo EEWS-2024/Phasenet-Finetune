@@ -259,18 +259,26 @@ def load_pretrained_model_selective(sess, pretrained_model_path, frozen_vars, tr
         print(f"❌ Error loading pretrained model: {e}")
         return False
 
-def create_decoder_only_optimizer(learning_rate, trainable_vars, loss):
+def create_decoder_only_optimizer(learning_rate, trainable_vars, loss, decay_step=None, decay_rate=None):
     """Create optimizer that only updates decoder variables"""
     
-    # Create learning rate with decay
+    # Create learning rate with optional decay
     global_step = tf.compat.v1.train.get_or_create_global_step()
-    learning_rate_node = tf.compat.v1.train.exponential_decay(
-        learning_rate=learning_rate,
-        global_step=global_step,
-        decay_steps=8,  # decay every 8 epochs
-        decay_rate=0.95,
-        staircase=True
-    )
+    
+    if decay_step and decay_rate:
+        # Use exponential decay if parameters provided
+        learning_rate_node = tf.compat.v1.train.exponential_decay(
+            learning_rate=learning_rate,
+            global_step=global_step,
+            decay_steps=decay_step,  # Use parameter from args
+            decay_rate=decay_rate,   # Use parameter from args
+            staircase=True
+        )
+        print(f"📉 Learning rate decay enabled: every {decay_step} epochs, rate × {decay_rate}")
+    else:
+        # Use constant learning rate if no decay parameters
+        learning_rate_node = tf.constant(learning_rate, dtype=tf.float32)
+        print(f"📊 Constant learning rate: {learning_rate}")
     
     # Create optimizer dengan scope khusus untuk decoder-only
     with tf.compat.v1.variable_scope("decoder_optimizer"):
@@ -329,6 +337,12 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
     # Create datasets
     train_dataset = data_reader_train.dataset(args.batch_size, shuffle=True, drop_remainder=True)
     
+    # Create validation dataset if validation data is provided
+    valid_dataset = None
+    if data_reader_valid:
+        valid_dataset = data_reader_valid.dataset(args.batch_size, shuffle=False, drop_remainder=False)
+        print(f"   📊 Validation windows: {len(data_reader_valid.sliding_windows):,}")
+    
     # Create placeholders
     X_placeholder = tf.compat.v1.placeholder(tf.float32, [None] + data_reader_train.config.X_shape, name='X_input')
     Y_placeholder = tf.compat.v1.placeholder(tf.float32, [None] + data_reader_train.config.Y_shape, name='Y_target')
@@ -367,8 +381,12 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
             return
         
         # Create decoder-only optimizer SETELAH load model
+        # Check if decay should be disabled
+        use_decay_step = args.decay_step if args.decay_step > 0 else None
+        use_decay_rate = args.decay_rate if args.decay_rate < 1.0 else None
+        
         decoder_train_op, learning_rate_node, global_step = create_decoder_only_optimizer(
-            args.learning_rate, trainable_vars, model.loss
+            args.learning_rate, trainable_vars, model.loss, use_decay_step, use_decay_rate
         )
         
         # Initialize optimizer variables yang baru dibuat
@@ -390,6 +408,8 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
         
         print(f"\n🚀 Starting decoder-only fine-tuning...")
         print(f"   📊 Training windows: {len(data_reader_train.sliding_windows):,}")
+        if data_reader_valid:
+            print(f"   📊 Validation windows: {len(data_reader_valid.sliding_windows):,}")
         print(f"   🎯 Batch size: {args.batch_size}")
         print(f"   🧊 Encoder: FROZEN ({len(frozen_vars)} variables)")
         print(f"   🔥 Decoder: TRAINABLE ({len(trainable_vars)} variables)")
@@ -456,8 +476,67 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
                 
                 # Validation if available
                 if data_reader_valid:
-                    # TODO: Add validation logic here
-                    pass
+                    print(f"   📊 Running validation...")
+                    
+                    # Create validation iterator
+                    valid_iterator = tf.compat.v1.data.make_initializable_iterator(valid_dataset)
+                    next_valid_batch = valid_iterator.get_next()
+                    sess.run(valid_iterator.initializer)
+                    
+                    # Calculate validation steps
+                    validation_steps = int(np.ceil(len(data_reader_valid.sliding_windows) / args.batch_size))
+                    
+                    # Run validation
+                    val_epoch_losses = []
+                    try:
+                        with tqdm(total=validation_steps, desc=f"   Validation Epoch {epoch+1}", unit="batch") as val_pbar:
+                            for val_step in range(validation_steps):
+                                try:
+                                    # Get validation batch
+                                    X_val_batch, Y_val_batch, fname_val_batch = sess.run(next_valid_batch)
+                                    
+                                    # Validation step (no training, only inference)
+                                    val_feed_dict = {
+                                        X_placeholder: X_val_batch,
+                                        Y_placeholder: Y_val_batch,
+                                        fname_placeholder: fname_val_batch,
+                                        model.drop_rate: 0.0,  # No dropout during validation
+                                        model.is_training: False
+                                    }
+                                    
+                                    # Run validation step (only compute loss, no training)
+                                    val_loss_value = sess.run(model.loss, feed_dict=val_feed_dict)
+                                    val_epoch_losses.append(val_loss_value)
+                                    
+                                    # Update validation progress bar
+                                    val_avg_loss = np.mean(val_epoch_losses)
+                                    val_pbar.set_description(f"   Validation Epoch {epoch+1} - Loss: {val_loss_value:.6f} Avg: {val_avg_loss:.6f}")
+                                    val_pbar.update(1)
+                                    
+                                except tf.errors.OutOfRangeError:
+                                    break
+                    except Exception as e:
+                        print(f"   ⚠️  Validation error at epoch {epoch+1}: {e}")
+                    
+                    # Calculate validation average
+                    if val_epoch_losses:
+                        val_avg_loss = np.mean(val_epoch_losses)
+                        val_losses.append(val_avg_loss)
+                        print(f"   ✅ Epoch {epoch+1} - Avg Validation Loss: {val_avg_loss:.6f}")
+                        
+                        # Check for best validation loss
+                        if val_avg_loss < best_val_loss:
+                            best_val_loss = val_avg_loss
+                            best_model_path = os.path.join(model_dir, "decoder_model_best.ckpt")
+                            saver.save(sess, best_model_path)
+                            print(f"   🎯 New best validation loss! Model saved: {best_model_path}")
+                    else:
+                        # If validation failed, append None to maintain alignment
+                        val_losses.append(None)
+                        print(f"   ⚠️  No validation loss data for epoch {epoch+1}")
+                else:
+                    # If no validation data, append None to maintain alignment
+                    val_losses.append(None)
                 
                 # Save model periodically
                 if (epoch + 1) % args.save_interval == 0:
@@ -479,9 +558,18 @@ def train_fn(args, data_reader_train, data_reader_valid=None):
             plot_loss_curves(train_losses, val_losses, model_dir)
             
             print(f"\n📊 DECODER-ONLY TRAINING COMPLETED")
-            print(f"   Initial loss: {train_losses[0]:.6f}")
-            print(f"   Final loss: {train_losses[-1]:.6f}")
-            print(f"   Improvement: {((train_losses[0] - train_losses[-1]) / train_losses[0] * 100):.2f}%")
+            print(f"   Initial training loss: {train_losses[0]:.6f}")
+            print(f"   Final training loss: {train_losses[-1]:.6f}")
+            print(f"   Training improvement: {((train_losses[0] - train_losses[-1]) / train_losses[0] * 100):.2f}%")
+            
+            if data_reader_valid and any(v is not None for v in val_losses):
+                valid_losses = [v for v in val_losses if v is not None]
+                if valid_losses:
+                    print(f"   Initial validation loss: {valid_losses[0]:.6f}")
+                    print(f"   Final validation loss: {valid_losses[-1]:.6f}")
+                    print(f"   Validation improvement: {((valid_losses[0] - valid_losses[-1]) / valid_losses[0] * 100):.2f}%")
+                    print(f"   Best validation loss: {best_val_loss:.6f}")
+            
             print(f"   🎯 Only decoder was trained, encoder remained frozen")
 
 def main():

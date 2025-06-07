@@ -34,14 +34,16 @@ PRETRAINED_MODEL="model/190703-214543"
 VALIDATION_DIR="$3"
 VALIDATION_LIST="$4"
 
-EPOCHS=2                 # More epochs untuk GPU
+EPOCHS=200                 # More epochs untuk GPU
 BATCH_SIZE=512            # Larger batch size untuk GPU
 LEARNING_RATE=0.0001      # Higher learning rate untuk decoder
 DROP_RATE=0.05            
-DECAY_STEP=10              
-DECAY_RATE=0.98           
-TESTING_MIN_PROB=0.1
 
+# Learning rate decay settings
+# Set DECAY_STEP=0 atau DECAY_RATE=1.0 untuk disable decay
+DECAY_STEP=0              # 0 = disable decay, or number of epochs between decay
+DECAY_RATE=1           # Learning rate multiplier (0.98 = reduce by 2% each step)
+TESTING_MIN_PROB=0.1
 
 echo "KONFIGURASI DECODER-ONLY FINE-TUNING:"
 echo "  Training dir: $TRAINING_DIR"
@@ -66,6 +68,11 @@ echo "  Sliding window: 50% overlap"
 echo "  Epochs: $EPOCHS"
 echo "  Batch size: $BATCH_SIZE"
 echo "  Learning rate: $LEARNING_RATE"
+if [ "$DECAY_STEP" -gt 0 ] && [ "$(echo "$DECAY_RATE < 1.0" | bc -l)" -eq 1 ]; then
+    echo "  Learning rate decay: Every $DECAY_STEP epochs, multiply by $DECAY_RATE"
+else
+    echo "  Learning rate decay: DISABLED (constant rate)"
+fi
 echo "  Dropout rate: $DROP_RATE"
 echo "  Testing min prob: $TESTING_MIN_PROB"
 echo "  Validation: $VALIDATION_ENABLED"
