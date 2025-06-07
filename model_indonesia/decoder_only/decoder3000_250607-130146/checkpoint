@@ -1,0 +1,3 @@
+model_checkpoint_path: "decoder_model_final.ckpt"
+all_model_checkpoint_paths: "decoder_model_best.ckpt"
+all_model_checkpoint_paths: "decoder_model_final.ckpt"
