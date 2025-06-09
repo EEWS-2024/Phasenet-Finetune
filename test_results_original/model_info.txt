@@ -1,0 +1,29 @@
+=== ORIGINAL MODEL TESTING INFO ===
+
+Model path: model/190703-214543
+Model type: Original PhaseNet (NCEDC dataset)
+Test date: 2025-06-08 12:16:52
+Purpose: Baseline comparison untuk finetuned models
+Expected: Performance mungkin rendah (domain mismatch)
+
+Model Details:
+  - Pre-trained on NCEDC (Northern California) dataset
+  - Window size: 3000 samples (30 seconds)
+  - Never seen Indonesian seismic data before
+  - Direct application without fine-tuning
+
+Checkpoint: model/190703-214543/model_95.ckpt
+Total variables in checkpoint: 210
+
+Checkpoint variables (first 10):
+  1. DownConv_0/down_bn1_1/beta - Shape: [8]
+  2. DownConv_0/down_bn1_1/beta/Adam - Shape: [8]
+  3. DownConv_0/down_bn1_1/beta/Adam_1 - Shape: [8]
+  4. DownConv_0/down_bn1_1/gamma - Shape: [8]
+  5. DownConv_0/down_bn1_1/gamma/Adam - Shape: [8]
+  6. DownConv_0/down_bn1_1/gamma/Adam_1 - Shape: [8]
+  7. DownConv_0/down_bn1_1/moving_mean - Shape: [8]
+  8. DownConv_0/down_bn1_1/moving_variance - Shape: [8]
+  9. DownConv_0/down_bn3_1/beta - Shape: [8]
+  10. DownConv_0/down_bn3_1/beta/Adam - Shape: [8]
+  ... and 200 more variables
